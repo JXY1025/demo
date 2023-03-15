@@ -1,0 +1,282 @@
+---
+title: "成绩分析报告初稿"
+author: "成绩分析小组"
+date: "`r Sys.Date()`"
+output: pdf_document
+geometry: "left=2.5cm,right=2cm,top=3cm,bottom=2.5cm"
+editor_options:
+  chunk_output_type: inline
+documentclass: ctexart
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F)
+```
+
+```{r}
+load('result.RData')
+options(warn = -1)
+```
+
+## 学校层面
+
+```{r}
+connt_data1 <- function(data1,data2,Type=character()){
+  #data1表示除了通识课的数据
+  #data2表示通识课的数据
+  #Type表示的是那种大类型的指标（卷面、平时、综合、课程结构）
+  options(digits = 3)
+  if(Type=='Score'){
+    colnms <- c("avg_score","difficulty","stability","pass_P","diversity","discrimination")
+    colnms1 <- c("平均分","难度","稳定性","及格率","差异度","区分度")}
+  if(Type=='OtherScore'){
+    colnms <- c("avg_ps_score","ps_difficulty","ps_stability","ps_diversity","ps_discrimination")
+    colnms1 <- c("平均分","难度","稳定性","差异度","区分度")}
+  if(Type=='TestScore'){
+    colnms <- c("avg_score_test","difficulty_test","stability_test","pass_P_test","diversity_test","discrimination_test")
+    colnms1 <- c("平均分","难度","稳定性","及格率","差异度","区分度")}
+  if(Type=='classstr'){
+    colnms <- c("mean_str","std_str","diversity_str","HeLiDu_str")
+    colnms1 <- c("平均值","标准差","差异度","合理度")
+  }
+  res1 <- aggregate(data1[,colnms],list(data1$kclb),mean,simplify = T)
+  colnames(res1)[1] <- '课程类别'
+  res2 <- as.data.frame(t(sapply(data2[,colnms],FUN=mean)))
+  res2[,'课程类别'] <- 4
+  res3 <- rbind(res1,res2)
+  colnames(res3)[-1] <- colnms1
+  res3[,'课程类别'] <- c('专业必修类课程','专业选修类课程','实践类课程','通识选修类课程','大学先修类课程')
+  return(res3)
+}
+
+xy_Table <- function(data=data.frame(),Type=character()){
+    if(Type=='Score'){
+    colnms <- c("avg_score","difficulty","stability","pass_P","diversity","discrimination")
+    colnms1 <- c("平均分","难度","稳定性","及格率","差异度","区分度")}
+  if(Type=='OtherScore'){
+    colnms <- c("avg_ps_score","ps_difficulty","ps_stability","ps_diversity","ps_discrimination")
+    colnms1 <- c("平均分","难度","稳定性","差异度","区分度")}
+  if(Type=='TestScore'){
+    colnms <- c("avg_score_test","difficulty_test","stability_test","pass_P_test","diversity_test","discrimination_test")
+    colnms1 <- c("平均分","难度","稳定性","及格率","差异度","区分度")}
+  if(Type=='classstr'){
+    colnms <- c("mean_str","std_str","diversity_str","HeLiDu_str")
+    colnms1 <- c("平均分","标准差","差异度","合理度")
+  }
+  res1 <- aggregate(data[,colnms],list(data$XsXymc),mean,simplify = T)
+  colnames(res1) <- append('学院名称',colnms1)
+  res1 <- res1[order(res1[,2],decreasing = TRUE),]
+  rownames(res1) <- NULL
+  fline <- as.data.frame(apply(data[,colnms],MARGIN = 2,FUN = mean))
+  colnames(fline) <- NULL
+  fline <- as.data.frame(t(fline))
+  colnames(fline) <- colnms1
+  fline[,'学院名称'] <- '全校'
+  fline <- fline[,append('学院名称',colnms1)]
+  return(rbind(fline,res1))
+}
+
+table_output1 <- function(data=data.frame(),title=character()){
+  library(kableExtra)
+  kbl(data,centering = T,digits = 3,caption = title,align = "c",escape = T)%>%
+    kable_styling()%>%
+    row_spec(0,bold = T)
+}
+```
+
+```{r}
+classstr1 <- connt_data1(jg_classstr,jg_ts_classstr,'classstr')
+Score1 <- connt_data1(jg_Score,jg_ts_Score,'Score')
+OtherScore1 <- connt_data1(jg_OtherScore,jg_ts_OtherScore,'OtherScore')
+TestScore1 <- connt_data1(jg_TestScore,jg_ts_TestScore,'TestScore')
+table_output1(data = classstr1,title = '各类别课程的课程结构相关指标汇总表')
+table_output1(data = Score1,title = '各类别课程的综合成绩相关指标汇总表')
+table_output1(data = OtherScore1,title = '各类别课程的平时成绩相关指标汇总表')
+table_output1(data = TestScore1,title = '各类别课程的卷面成绩相关指标汇总表')
+
+
+
+classstr2 <- xy_Table(jg_classstr,'classstr')
+Score2 <- xy_Table(jg_Score,'Score')
+OtherScore2 <- xy_Table(jg_OtherScore,'OtherScore')
+TestScore2 <- xy_Table(jg_TestScore,'TestScore')
+table_output1(data = classstr2,title = '各学院的课程结构相关指标汇总表')
+table_output1(data = Score2,title = '各学院的综合成绩相关指标汇总表')
+table_output1(data = OtherScore2,title = '各学院的平时成绩相关指标汇总表')
+table_output1(data = TestScore2,title = '各学院的卷面成绩相关指标汇总表')
+```
+
+```{r}
+# 第一类课程
+test_data1 <- jg_TestScore[jg_TestScore$kclb==1,]
+test_data1 <- test_data1[which(rowSums(is.na(test_data1))==0),]
+
+other_data1 <- jg_OtherScore[jg_OtherScore$kclb==1,]
+other_data1 <- other_data1[which(rowSums(is.na(other_data1))==0),]
+
+score_data1 <- jg_Score[jg_Score$kclb==1,]
+score_data1 <- score_data1[which(rowSums(is.na(score_data1))==0),]
+
+classstr_data1 <- jg_classstr[jg_classstr$kclb==1,]
+classstr_data1 <- classstr_data1[which(rowSums(is.na(classstr_data1))==0),]
+
+table_output1(xy_Table(test_data1,'TestScore'),title = '专业必修类课程卷面成绩相关指标汇总表')
+table_output1(xy_Table(other_data1,'OtherScore'),title = '专业必修类课程平时成绩相关指标汇总表')
+table_output1(xy_Table(score_data1,'Score'),title = '专业必修类课程综合成绩相关指标汇总表')
+table_output1(xy_Table(classstr_data1,'classstr'),title = '专业必修类课程课程结构相关指标汇总表')
+#第二类课程
+test_data2 <- jg_TestScore[jg_TestScore$kclb==2,]
+test_data2 <-test_data2[which(rowSums(is.na(test_data2))==0),]
+
+other_data2 <- jg_OtherScore[jg_OtherScore$kclb==2,]
+other_data2 <- other_data2[which(rowSums(is.na(other_data2))==0),]
+
+score_data2 <- jg_Score[jg_Score$kclb==2,]
+score_data2 <- score_data2[which(rowSums(is.na(score_data2))==0),]
+
+classstr_data2 <- jg_classstr[jg_classstr$kclb==2,]
+classstr_data2 <- classstr_data2[which(rowSums(is.na(classstr_data2))==0),]
+
+table_output1(xy_Table(test_data2,'TestScore'),title = '专业选修类课程卷面成绩相关指标汇总表')
+table_output1(xy_Table(other_data2,'OtherScore'),title = '专业选修类课程平时成绩相关指标汇总表')
+table_output1(xy_Table(score_data2,'Score'),title = '专业选修类课程综合成绩相关指标汇总表')
+table_output1(xy_Table(classstr_data2,'classstr'),title = '专业选修类课程课程结构相关指标汇总表')
+#第三类课程
+test_data3 <- jg_TestScore[jg_TestScore$kclb==3,]
+test_data3 <- test_data3[which(rowSums(is.na(test_data3))==0),]
+
+other_data3 <- jg_OtherScore[jg_OtherScore$kclb==3,]
+other_data3 <- other_data3[which(rowSums(is.na(other_data3))==0),]
+
+score_data3 <- jg_Score[jg_Score$kclb==3,]
+score_data3 <- score_data3[which(rowSums(is.na(score_data3))==0),]
+
+classstr_data3 <- jg_classstr[jg_classstr$kclb==3,]
+classstr_data3 <- classstr_data3[which(rowSums(is.na(classstr_data3))==0),]
+
+table_output1(xy_Table(test_data3,'TestScore'),title = '实践类课程卷面成绩相关指标汇总表')
+table_output1(xy_Table(other_data3,'OtherScore'),title = '实践类课程平时成绩相关指标汇总表')
+table_output1(xy_Table(score_data3,'Score'),title = '实践类课程综合成绩相关指标汇总表')
+table_output1(xy_Table(classstr_data3,'classstr'),title = '实践类课程课程结构相关指标汇总表')
+#第五类课程
+test_data5 <- jg_TestScore[jg_TestScore$kclb==5,]
+test_data5 <- test_data5[which(rowSums(is.na(test_data5))==0),]
+
+other_data5 <- jg_OtherScore[jg_OtherScore$kclb==5,]
+other_data5 <- other_data5[which(rowSums(is.na(other_data5))==0),]
+
+score_data5 <- jg_Score[jg_Score$kclb==5,]
+score_data5 <- score_data5[which(rowSums(is.na(score_data5))==0),]
+
+classstr_data5 <- jg_classstr[jg_classstr$kclb==5,]
+classstr_data5 <- classstr_data5[which(rowSums(is.na(classstr_data5))==0),]
+
+table_output1(xy_Table(test_data5,'TestScore'),title = '大学先修类课程卷面成绩相关指标汇总表')
+table_output1(xy_Table(other_data5,'OtherScore'),title = '大学先修类课程平时成绩相关指标汇总表')
+table_output1(xy_Table(score_data5,'Score'),title = '大学先修类课程综合成绩相关指标汇总表')
+table_output1(xy_Table(classstr_data5,'classstr'),title = '大学先修类课程课程结构相关指标汇总表')
+```
+
+```{r}
+cutdata <- function(data=data.frame(),index=character(),breaks=vector()){
+    options(digits = 3)
+    nmslist <- as.vector(unique(data$XsXymc))
+    for(i in 1:length(nmslist)){
+        data1 <- data[data$XsXymc==nmslist[i],]
+        len <- length(data1[,1])
+        res1 <- as.data.frame(table(cut(data1[[index]],breaks = breaks,include.lowest = T,ordered_result = TRUE)))
+        res1[,2] <- res1[,2]/len
+        colnames(res1) <- c('区间',nmslist[i])
+        if(i==1){
+            res <- res1}
+        else{
+            res <- merge(res,res1,by=1)}
+    }
+    res2 <- as.data.frame(table(cut(data[[index]],breaks = breaks,include.lowest = T,ordered_result = TRUE)))
+    res2[,2] <- res2[,2]/length(data[,1])
+    colnames(res2) <- c('区间','全校')
+    res <- merge(res2,res)
+    res <- t(res)
+    colnames(res) <- res[1,]
+    res <- res[-1,]
+    cols <- colnames(res)
+    cols <- c(cols[length(cols)],cols[1:(length(cols)-1)])
+    res <- res[,cols]
+    if(grepl('diversity',index)){
+      colnames(res)[1] <- 0
+      colnames(res)[2] <- gsub(breaks[2],0,colnames(res)[2])
+    }
+    return(res)
+} 
+```
+
+```{r}
+table_output2 <- function(data=data.frame(),title=character()){
+  library(kableExtra)
+  kbl(data,caption = title,align = "c",escape = T) %>%
+    kable_paper() %>%
+    #row_spec(4, bold = TRUE, italic = TRUE,monospace = T,background = '#87CEEB')%>%
+    column_spec(1, bold = T, border_right = T)%>%
+    add_header_above(c("学院名称", '区间划分'=length(data[1,])),font_size = 12)
+  }
+
+avg_score_brks <- c(0,60,70,80,90,100)
+pass_p_brks <- c(0,0.50,0.60,0.70,0.80,0.90,10)
+diversity_brks <- c(0,0.01,5,10,15,20,25,30)
+stability_brks <- c(0,0.15,0.2,0.4,1)
+str_avg_score_brks <- c(0,0.6,0.9,1.1,1.4,100)
+
+test_dt1 <- cutdata(test_data1,'avg_score_test',breaks=avg_score_brks)
+test_dt3 <- cutdata(test_data1,'stability_test',breaks=stability_brks)
+test_dt4 <- cutdata(test_data1,'pass_P_test',breaks=pass_p_brks)
+test_dt5 <- cutdata(test_data1,'diversity_test',breaks=diversity_brks)
+#dt6 <- cutdata(test_data,'discrimination_test',breaks=c(0,0.1,0.3,0.5,0.7,1))
+
+
+table_output2(test_dt1,title = '各学院卷面成绩平均分区间分布表')
+table_output2(test_dt3,'各学院卷面成绩稳定性区间分布表')
+table_output2(test_dt4,'各学院卷面成绩及格率区间分布表')
+table_output2(test_dt5,'各学院卷面成绩区分度区间分布表')
+# list_output(dt6,'卷面成绩差异度')
+
+```
+
+```{r}
+
+dt1 <- cutdata(score_data1,'avg_score',breaks=avg_score_brks)
+dt3 <- cutdata(score_data1,'stability',breaks=stability_brks)
+dt4 <- cutdata(score_data1,'pass_P',breaks=pass_p_brks)
+dt5 <- cutdata(score_data1,'diversity',breaks=diversity_brks)
+
+table_output2(dt1,title = '各学院综合成绩平均分区间分布表')
+table_output2(dt3,'各学院综合成绩稳定性区间分布表')
+table_output2(dt4,'各学院综合成绩及格率区间分布表')
+table_output2(dt5,'各学院综合成绩区分度区间分布表')
+
+ps_dt1 <- cutdata(other_data1,'avg_ps_score',breaks=c(0,6,7,8,9,10))
+ps_dt3 <- cutdata(other_data1,'ps_stability',breaks=stability_brks)
+ps_dt4 <- cutdata(other_data1,'ps_diversity',breaks=diversity_brks)
+#ps_dt5 <- cutdata(other_data,'ps_discrimination',breaks=c(-1,0.1,0.3,0.5,0.7,1))
+
+table_output2(ps_dt1,title = '各学院平时成绩平均分区间分布表')
+table_output2(ps_dt3,'各学院平时成绩稳定性区间分布表')
+table_output2(ps_dt4,'各学院平时成绩区分度区间分布表')
+```
+
+```{r}
+#str_dt1 <- cutdata(classstr_data1,'mean_str',breaks=avg_score_brks)
+#str_dt2 <- cutdata(classstr_data1,'std_str',breaks = )
+```
+
+```{r}
+unusual_data <- jg_Score[jg_Score$avg_score<60,]
+write.csv(unusual_data,file='平均分异常数据.csv',fileEncoding = 'GB18030')
+```
+
+```{r}
+write.csv(jg_Score[jg_Score$stability>0.25,],file = '稳定性异常数据.csv',,fileEncoding = 'GB18030')
+```
+
+```{r}
+write.csv(jg_Score[jg_Score$discrimination==0,],file = '区分度异常数据.csv',,fileEncoding = 'GB18030')
+```
