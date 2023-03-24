@@ -276,7 +276,7 @@ write.csv(unusual_data,file='平均分异常数据.csv',fileEncoding = 'GB18030'
 ```{r}
 write.csv(jg_Score[jg_Score$stability>0.25,],file = '稳定性异常数据.csv',,fileEncoding = 'GB18030')
 ```
-jkk
+
 ```{r}
 write.csv(jg_Score[jg_Score$discrimination==0,],file = '区分度异常数据.csv',,fileEncoding = 'GB18030')
 ```
