@@ -1,4 +1,4 @@
-y---
+---
 title: "成绩分析报告初稿"
 author: "成绩分析小组"
 date: "`r Sys.Date()`"
