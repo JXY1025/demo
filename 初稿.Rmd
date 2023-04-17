@@ -2,42 +2,57 @@
 title: "成绩分析报告初稿"
 author: "成绩分析小组"
 date: "`r Sys.Date()`"
-output: pdf_document
-geometry: "left=2.5cm,right=2cm,top=3cm,bottom=2.5cm"
+output:
+  pdf_document: 
+    latex_engine: xelatex
+  word_document: default
+  html_document:
+    df_print: paged
+geometry: left=1.5cm,right=1.5cm,top=2cm,bottom=2.5cm
 editor_options:
   chunk_output_type: inline
 documentclass: ctexart
+indent: true
 ---
 
+```{=tex}
+\pagestyle{empty}
+\newpage
+\tableofcontents
+\newpage
+\setcounter{page}{1}
+\pagestyle{plain}
+\linespread{1.25}
+```
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = F)
+options(warn = -1)
 ```
 
 ```{r}
 load('result.RData')
-options(warn = -1)
+load('result2.RData')
 ```
-
-## 学校层面
 
 ```{r}
 connt_data1 <- function(data1,data2,Type=character()){
   #data1表示除了通识课的数据
   #data2表示通识课的数据
   #Type表示的是那种大类型的指标（卷面、平时、综合、课程结构）
+  data2 <-  na.omit(data2)
   options(digits = 3)
   if(Type=='Score'){
     colnms <- c("avg_score","difficulty","stability","pass_P","diversity","discrimination")
-    colnms1 <- c("平均分","难度","稳定性","及格率","差异度","区分度")}
+    colnms1 <- c("平均分","难度","课程成绩集中度","及格率","中间50%成绩集中度","高低分差异度")}
   if(Type=='OtherScore'){
     colnms <- c("avg_ps_score","ps_difficulty","ps_stability","ps_diversity","ps_discrimination")
-    colnms1 <- c("平均分","难度","稳定性","差异度","区分度")}
+    colnms1 <- c("平均分","难度","课程成绩集中度","中间50%成绩集中度","高低分差异度")}
   if(Type=='TestScore'){
     colnms <- c("avg_score_test","difficulty_test","stability_test","pass_P_test","diversity_test","discrimination_test")
-    colnms1 <- c("平均分","难度","稳定性","及格率","差异度","区分度")}
+    colnms1 <- c("平均分","难度","课程成绩集中度","及格率","中间50%成绩集中度","高低分差异度")}
   if(Type=='classstr'){
     colnms <- c("mean_str","std_str","diversity_str","HeLiDu_str")
-    colnms1 <- c("平均值","标准差","差异度","合理度")
+    colnms1 <- c("比例均值","标准差","差异度","合理度")
   }
   res1 <- aggregate(data1[,colnms],list(data1$kclb),mean,simplify = T)
   colnames(res1)[1] <- '课程类别'
@@ -45,23 +60,28 @@ connt_data1 <- function(data1,data2,Type=character()){
   res2[,'课程类别'] <- 4
   res3 <- rbind(res1,res2)
   colnames(res3)[-1] <- colnms1
-  res3[,'课程类别'] <- c('专业必修类课程','专业选修类课程','实践类课程','通识选修类课程','大学先修类课程')
+  
+  res3[res3[,'课程类别']==1,][['课程类别']] <- '专业必修类课程'
+  res3[res3[,'课程类别']==2,][['课程类别']] <- '专业选修类课程'
+  res3[res3[,'课程类别']==3,][['课程类别']] <- '实践类课程'
+  res3[res3[,'课程类别']==4,][['课程类别']] <- '通识选修类课程'
+  res3[res3[,'课程类别']==5,][['课程类别']] <- '通识必修类课程'
   return(res3)
 }
 
 xy_Table <- function(data=data.frame(),Type=character()){
     if(Type=='Score'){
     colnms <- c("avg_score","difficulty","stability","pass_P","diversity","discrimination")
-    colnms1 <- c("平均分","难度","稳定性","及格率","差异度","区分度")}
+    colnms1 <- c("平均分","难度","课程成绩集中度","及格率","中间50%成绩集中度","高低分差异度")}
   if(Type=='OtherScore'){
-    colnms <- c("avg_ps_score","ps_difficulty","ps_stability","ps_diversity","ps_discrimination")
-    colnms1 <- c("平均分","难度","稳定性","差异度","区分度")}
+    colnms <- c("avg_ps_score",'passP_ps_socre',"ps_difficulty","ps_stability","ps_diversity","ps_discrimination")
+    colnms1 <- c("平均分",'及格率',"难度","课程成绩集中度","中间50%成绩集中度","高低分差异度")}
   if(Type=='TestScore'){
     colnms <- c("avg_score_test","difficulty_test","stability_test","pass_P_test","diversity_test","discrimination_test")
-    colnms1 <- c("平均分","难度","稳定性","及格率","差异度","区分度")}
+    colnms1 <- c("平均分","难度","课程成绩集中度","及格率","中间50%成绩集中度","高低分差异度")}
   if(Type=='classstr'){
     colnms <- c("mean_str","std_str","diversity_str","HeLiDu_str")
-    colnms1 <- c("平均分","标准差","差异度","合理度")
+    colnms1 <- c("比例均值","标准差","差异度","合理度")
   }
   res1 <- aggregate(data[,colnms],list(data$XsXymc),mean,simplify = T)
   colnames(res1) <- append('学院名称',colnms1)
@@ -78,35 +98,174 @@ xy_Table <- function(data=data.frame(),Type=character()){
 
 table_output1 <- function(data=data.frame(),title=character()){
   library(kableExtra)
-  kbl(data,centering = T,digits = 3,caption = title,align = "c",escape = T)%>%
-    kable_styling()%>%
+  kbl(data,centering = T,digits = 3,caption = title,align = "c",escape = T,position = 'h',booktabs = T)%>%
+    kable_styling(font_size = 8)%>%
     row_spec(0,bold = T)
 }
 ```
+
+```{r}
+cutdata <- function(data=data.frame(),index=character(),breaks=vector()){
+    options(digits = 3)
+    nmslist <- as.vector(unique(data$XsXymc))
+    
+    avg_data <- as.data.frame(tapply(data[[index]],data$XsXymc,mean,simplify = T))
+    avg_data <- na.omit(avg_data)
+    colnames(avg_data) <- '平均值'
+    avg_data['全校',] <- mean(data[[index]])
+    
+    for(i in 1:length(nmslist)){
+        data1 <- data[data$XsXymc==nmslist[i],]
+        len <- length(data1[,1])
+        res1 <- as.data.frame(table(cut(data1[[index]],breaks = breaks,include.lowest = T,ordered_result = TRUE))*100)
+        res1[,2] <- res1[,2]/len
+        colnames(res1) <- c('区间',nmslist[i])
+        if(i==1){
+            res <- res1}
+        else{
+            res <- merge(res1,res,by=1)}
+    }
+    res2 <- as.data.frame(table(cut(data[[index]],breaks = breaks,include.lowest = T,ordered_result = TRUE))*100)
+    res2[,2] <- res2[,2]/length(data[,1])
+    colnames(res2) <- c('区间','全校')
+    cutlist <- res2$区间
+    res <- merge(res2,res)
+    res <- t(res)
+    colnames(res) <- res[1,]
+    res <- res[-1,]
+    res <- res[,as.vector(cutlist)]
+    if(grepl('diversity',index)){
+      colnames(res)[1] <- 0
+      colnames(res)[2] <- gsub(breaks[2],0,colnames(res)[2])
+    }
+    res <- cbind(avg_data,res)
+    res <- res[order(res[,'平均值'],decreasing = TRUE),]
+    return(res)
+} 
+```
+
+```{r}
+table_output2 <- function(data=data.frame(),title=character()){
+  library(kableExtra)
+  kbl(data,caption = title,align = "c",escape = T,position = 'h',digits = 3) %>%
+    kable_styling(font_size = 8)%>%
+    kable_paper() %>%
+    row_spec(which(rownames(data)=='全校'), bold = TRUE,monospace = T,background = '#ADD8E6')%>%
+    column_spec(1, bold = T, border_right = T)%>%
+    add_header_above(c("学院名称",'', '区间划分结果(%)'=length(data[1,])-1),font_size = 10)
+    
+  }
+ds_table <- function(data=data.frame(),index=character()){
+  options(digits = 3)
+  colnmslist <- c('最小值','下四分位数','中位数','平均值','上四分位数','最大值')
+  down_quantile <- function(data){return(quantile(data,0.25))}
+  up_quantile <- function(data){return(quantile(data,0.75))}
+  
+  Min <- as.data.frame(tapply(test_data1$discrimination_test,test_data1$XsXymc,min))
+  
+  Down_quantile <- as.data.frame(tapply(test_data1$discrimination_test,test_data1$XsXymc,down_quantile))
+  
+  Median <- as.data.frame(tapply(test_data1$discrimination_test,test_data1$XsXymc,median))
+  
+  Mean <- as.data.frame(tapply(test_data1$discrimination_test,test_data1$XsXymc,mean))
+  Up_quantile <-as.data.frame(tapply(test_data1$discrimination_test,test_data1$XsXymc,up_quantile))
+  
+  Max <- as.data.frame(tapply(test_data1$discrimination_test,test_data1$XsXymc,max))
+  
+  res <- cbind(Min,Down_quantile,Median,Mean,Up_quantile,Max)
+  colnames(res) <- colnmslist
+  return(res[order(res$平均值,decreasing = T),])
+}
+
+avg_score_brks <- c(0,60,70,80,90,100)
+pass_p_brks <- c(0,0.50,0.60,0.70,0.80,0.90,1)
+diversity_brks <- c(0,0.01,5,10,15,20,25,30)
+stability_brks <- c(0,0.15,0.2,0.4,1)
+str_avg_score_brks <- c(0,0.6,0.9,1.1,1.4,100)
+```
+
+# **一、摘要**
+
+\newpage
+
+\newpage
+
+# **二、评价指标含义简述**
+
+针对课程综合成绩、卷面成绩与平时成绩，从平均分、课程难度、及格率、高低分差异度、中间50%成绩的集中度、课程成绩集中度6个方面进行评价；针对卷面成绩与平时成绩的匹配情况，立足综合成绩与卷面成绩的比值，定义了4个指标对课程成绩结构进行评价，具体的指标含义如下：
+
+## **2.1 课程综合成绩、卷面成绩和平时成绩的评价指标**
+
+### 平均分
+
+平均分定义为得分的平均值，这里的平均分是去掉最低的5% 学生的平均分。
+
+### 课程难度
+
+定义为平均分与满分的比值，反映试题与学生知识能力水平适合程度，合适的难度有利于激发学生学习的积极性。课程难度取值在[0,1]，值越高，课程难度越低。
+
+### 及格率
+
+定义为60分以上的人所占的百分比，及格率越高，掌握越好。
+
+### 高低分差异度
+
+定义为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。
+
+### 中间50%成绩的集中度
+
+得分由高到低，排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。
+
+### 课程成绩集中度
+
+定义为得分的标准差与平均分的比值，值越小，说明成绩越集中。
+
+## **2.2课程成绩结构**
+
+为衡量卷面成绩与平时成绩的匹配情况，首先将卷面成绩和平时成绩同一为百分制，再计算卷面成绩与平时成绩的比值，比值在1附近，说明两项成绩越匹配。
+
+### 卷面成绩与平时成绩比例的均值
+
+定义为卷面成绩与平时成绩之比的平均值，反映课程结构的平均水准。比例均值越接近于1时，说明课程结构越合理。
+
+### 卷面成绩与平时成绩比例绝对误差
+
+定义为卷面成绩与平时成绩之比与平均比值的绝对误差，反映比值分布的离散程度。误差越小，卷面成绩与平时成绩的比例$p_i$分布越集中，课程结相对构越稳定。
+
+### 卷面成绩与平时成绩比例差异度
+
+定义为卷面成绩与平时成绩之比的上四分位数与下四分位数之差，反映中间百分之五十卷面成绩与平时成绩比例的离散程度。比例差异度越小，课程成绩结构越稳定。
+
+### 课程成绩结构合理度
+
+定义为平时成绩与卷面成绩之比与1的平均绝对偏差，反映平时成绩与卷面成绩的构成的合理度。课程成绩结构合理度越小，课程成绩结构越合理。
+
+\newpage
+
+# **三、数据整体情况**
+
+```{r}
+library(kableExtra)
+kbl(xinxzl,centering = T,digits = 3,caption = '各学院相关信息汇总表',align = "c",escape = T,position = 'h')%>%
+  kable_styling(font_size = 7)%>%
+  row_spec(0,bold = T)
+```
+此次成绩分析数据主要涉及23个学院，110个专业，3586门课程（其中专业必修类课程1836门，专业选修类课程959门，实践综合类课程295门，通识必修类课程534门，通识选修类课程386门），参与学生数量37154人，学生成绩条数763504条。
+\newpage
+
+# **四、学校的整体情况**
 
 ```{r}
 classstr1 <- connt_data1(jg_classstr,jg_ts_classstr,'classstr')
 Score1 <- connt_data1(jg_Score,jg_ts_Score,'Score')
 OtherScore1 <- connt_data1(jg_OtherScore,jg_ts_OtherScore,'OtherScore')
 TestScore1 <- connt_data1(jg_TestScore,jg_ts_TestScore,'TestScore')
-table_output1(data = classstr1,title = '各类别课程的课程结构相关指标汇总表')
-table_output1(data = Score1,title = '各类别课程的综合成绩相关指标汇总表')
-table_output1(data = OtherScore1,title = '各类别课程的平时成绩相关指标汇总表')
-table_output1(data = TestScore1,title = '各类别课程的卷面成绩相关指标汇总表')
-
-
 
 classstr2 <- xy_Table(jg_classstr,'classstr')
 Score2 <- xy_Table(jg_Score,'Score')
 OtherScore2 <- xy_Table(jg_OtherScore,'OtherScore')
 TestScore2 <- xy_Table(jg_TestScore,'TestScore')
-table_output1(data = classstr2,title = '各学院的课程结构相关指标汇总表')
-table_output1(data = Score2,title = '各学院的综合成绩相关指标汇总表')
-table_output1(data = OtherScore2,title = '各学院的平时成绩相关指标汇总表')
-table_output1(data = TestScore2,title = '各学院的卷面成绩相关指标汇总表')
-```
 
-```{r}
 # 第一类课程
 test_data1 <- jg_TestScore[jg_TestScore$kclb==1,]
 test_data1 <- test_data1[which(rowSums(is.na(test_data1))==0),]
@@ -119,11 +278,6 @@ score_data1 <- score_data1[which(rowSums(is.na(score_data1))==0),]
 
 classstr_data1 <- jg_classstr[jg_classstr$kclb==1,]
 classstr_data1 <- classstr_data1[which(rowSums(is.na(classstr_data1))==0),]
-
-table_output1(xy_Table(test_data1,'TestScore'),title = '专业必修类课程卷面成绩相关指标汇总表')
-table_output1(xy_Table(other_data1,'OtherScore'),title = '专业必修类课程平时成绩相关指标汇总表')
-table_output1(xy_Table(score_data1,'Score'),title = '专业必修类课程综合成绩相关指标汇总表')
-table_output1(xy_Table(classstr_data1,'classstr'),title = '专业必修类课程课程结构相关指标汇总表')
 #第二类课程
 test_data2 <- jg_TestScore[jg_TestScore$kclb==2,]
 test_data2 <-test_data2[which(rowSums(is.na(test_data2))==0),]
@@ -136,11 +290,6 @@ score_data2 <- score_data2[which(rowSums(is.na(score_data2))==0),]
 
 classstr_data2 <- jg_classstr[jg_classstr$kclb==2,]
 classstr_data2 <- classstr_data2[which(rowSums(is.na(classstr_data2))==0),]
-
-table_output1(xy_Table(test_data2,'TestScore'),title = '专业选修类课程卷面成绩相关指标汇总表')
-table_output1(xy_Table(other_data2,'OtherScore'),title = '专业选修类课程平时成绩相关指标汇总表')
-table_output1(xy_Table(score_data2,'Score'),title = '专业选修类课程综合成绩相关指标汇总表')
-table_output1(xy_Table(classstr_data2,'classstr'),title = '专业选修类课程课程结构相关指标汇总表')
 #第三类课程
 test_data3 <- jg_TestScore[jg_TestScore$kclb==3,]
 test_data3 <- test_data3[which(rowSums(is.na(test_data3))==0),]
@@ -153,11 +302,6 @@ score_data3 <- score_data3[which(rowSums(is.na(score_data3))==0),]
 
 classstr_data3 <- jg_classstr[jg_classstr$kclb==3,]
 classstr_data3 <- classstr_data3[which(rowSums(is.na(classstr_data3))==0),]
-
-table_output1(xy_Table(test_data3,'TestScore'),title = '实践类课程卷面成绩相关指标汇总表')
-table_output1(xy_Table(other_data3,'OtherScore'),title = '实践类课程平时成绩相关指标汇总表')
-table_output1(xy_Table(score_data3,'Score'),title = '实践类课程综合成绩相关指标汇总表')
-table_output1(xy_Table(classstr_data3,'classstr'),title = '实践类课程课程结构相关指标汇总表')
 #第五类课程
 test_data5 <- jg_TestScore[jg_TestScore$kclb==5,]
 test_data5 <- test_data5[which(rowSums(is.na(test_data5))==0),]
@@ -170,113 +314,1044 @@ score_data5 <- score_data5[which(rowSums(is.na(score_data5))==0),]
 
 classstr_data5 <- jg_classstr[jg_classstr$kclb==5,]
 classstr_data5 <- classstr_data5[which(rowSums(is.na(classstr_data5))==0),]
-
-table_output1(xy_Table(test_data5,'TestScore'),title = '大学先修类课程卷面成绩相关指标汇总表')
-table_output1(xy_Table(other_data5,'OtherScore'),title = '大学先修类课程平时成绩相关指标汇总表')
-table_output1(xy_Table(score_data5,'Score'),title = '大学先修类课程综合成绩相关指标汇总表')
-table_output1(xy_Table(classstr_data5,'classstr'),title = '大学先修类课程课程结构相关指标汇总表')
 ```
+
+## 综合成绩
 
 ```{r}
-cutdata <- function(data=data.frame(),index=character(),breaks=vector()){
-    options(digits = 3)
-    nmslist <- as.vector(unique(data$XsXymc))
-    for(i in 1:length(nmslist)){
-        data1 <- data[data$XsXymc==nmslist[i],]
-        len <- length(data1[,1])
-        res1 <- as.data.frame(table(cut(data1[[index]],breaks = breaks,include.lowest = T,ordered_result = TRUE)))
-        res1[,2] <- res1[,2]/len
-        colnames(res1) <- c('区间',nmslist[i])
-        if(i==1){
-            res <- res1}
-        else{
-            res <- merge(res,res1,by=1)}
-    }
-    res2 <- as.data.frame(table(cut(data[[index]],breaks = breaks,include.lowest = T,ordered_result = TRUE)))
-    res2[,2] <- res2[,2]/length(data[,1])
-    colnames(res2) <- c('区间','全校')
-    res <- merge(res2,res)
-    res <- t(res)
-    colnames(res) <- res[1,]
-    res <- res[-1,]
-    cols <- colnames(res)
-    cols <- c(cols[length(cols)],cols[1:(length(cols)-1)])
-    res <- res[,cols]
-    if(grepl('diversity',index)){
-      colnames(res)[1] <- 0
-      colnames(res)[2] <- gsub(breaks[2],0,colnames(res)[2])
-    }
-    return(res)
-} 
+table_output1(data = Score1,title = '各类别课程的综合成绩相关指标汇总表')
 ```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表2的结果，可以得到实践类课程的综合成绩平均分最高为84.2分，通识选修类课程的综合成绩平均分最低为81.2分。
+
+难度取值范围为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表2的结果，专业必修类课程难度指数最低为0.807，实践类课程的难度指数最高为0.842。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表2的结果，通识选修类课程的课程成绩集中度最大为0.190，实践类课程的课程成绩集中度最小为0.067。
+
+及格率反映课程综合成绩达到最低合格指标的人数占比，指标取值越大说明能够达到基本课程教学要求的人数占比越大，学生掌握情况越好。根据表2的结果，可以得到5类课程的及格率均大于90%，通识选修类课程及格率最低为92.7%，实践类课程及格率最高为99.7%。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表2的结果，通识选修类课程的中间50%成绩集中度最大为12.73，实践类课程中间50%成绩集中度最小为6.05。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表2的结果，可以得到通识选修类课程高低分差异度最大为28.4，实践类课程高低分差异度最小为10.3。
+\newpage
+```{r}
+table_output1(data = Score2,title = '各学院的综合成绩相关指标汇总表')
+```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表3的结果，可以得到全校平均分为81.8分，国际教育学院的综合成绩平均分最高为86.1分，物理与电子工程学院的综合成绩平均分最低为78.9分。
+
+难度取值范围为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表3的结果，国际教育学院的考试难度指数最高为0.861，物理与电子工程学院的难度指数最低为0.789。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表3的结果，全校课程成绩集中度为0.080，物理与电子工程学院的课程成绩集中度最大为0.102，教育科学学院的课程成绩集中度最小为0.058。
+
+及格率反映课程综合成绩达到最低合格指标的人数占比，指标取值越大说明能够达到基本课程教学要求的人数占比越大，学生掌握情况越好。根据表3的结果，可以得到全校及格率为98.0%，全校所有学院的及格率均大于95%，物理与电子工程学院及格率最低为95.3%，国际教育学院的及格率最高为99.7%。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表3的结果，全校的中间50%成绩集中度是7.42，物理与电子工程学院的中间50%成绩集中度最大为9.41，文学院中间50%成绩集中度最小为5.86。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表3的结果，可以得到全校的高低分差异度为13.8，物理与电子工程学院高低分差异度最大为17.5，国际教育学院课程高低分差异度最小为10.9。
+\newpage
+```{r}
+table_output1(xy_Table(score_data1,'Score'),title = '专业必修类课程综合成绩相关指标汇总表')
+```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表4的结果，可以得到全校专业必修类课程平均分为80.7分，国际教育学院的专业必修类课程综合成绩平均分最高为85.4分，物理与电子工程学院的专业必修类课程综合成绩平均分最低为75.3分。
+
+难度取值范围为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表4的结果，可以得到全校专业必修类课程难度指数为0.807，国际教育学院的专业必修类课程难度指数最高为0.854，物理与电子工程学院的专业必修类课程难度指数最低为0.753。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表4的结果，全校专业必修类课程成绩集中度为0.091，物理与电子工程学院的专业必修类课程成绩集中度最大为0.129，教育科学学院的专业必修类课程成绩集中度最小为0.064。
+
+及格率反映课程综合成绩达到最低合格指标的人数占比，指标取值越大说明能够达到基本课程教学要求的人数占比越大，学生掌握情况越好。根据表4的结果，可以得到全校专业必修类课程及格率为96.8%，全校所有学院的专业必修类课程及格率均大于90%，物理与电子工程学院专业必修类课程的及格率最低为90.5%，马克思主义学院专业必修类课程的及格率最高为99.4%。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表4的结果，全校的专业必修类课程中间50%成绩集中度是8.51，物理与电子工程学院专业必修类课程的中间50%成绩集中度最大为11.86，马克思主义学院专业必修类课程的中间50%成绩集中度最小为6.08。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表4的结果，可以得到全校的专业必修类课程高低分差异度为15.8，物理与电子工程学院专业必修类课程的高低分差异度最大为21.9，马克思主义学院专业必修类课程的高低分差异度最小为11.4。
 
 ```{r}
-table_output2 <- function(data=data.frame(),title=character()){
-  library(kableExtra)
-  kbl(data,caption = title,align = "c",escape = T) %>%
-    kable_paper() %>%
-    #row_spec(4, bold = TRUE, italic = TRUE,monospace = T,background = '#87CEEB')%>%
-    column_spec(1, bold = T, border_right = T)%>%
-    add_header_above(c("学院名称", '区间划分'=length(data[1,])),font_size = 12)
-  }
-
-avg_score_brks <- c(0,60,70,80,90,100)
-pass_p_brks <- c(0,0.50,0.60,0.70,0.80,0.90,10)
-diversity_brks <- c(0,0.01,5,10,15,20,25,30)
-stability_brks <- c(0,0.15,0.2,0.4,1)
-str_avg_score_brks <- c(0,0.6,0.9,1.1,1.4,100)
-
-test_dt1 <- cutdata(test_data1,'avg_score_test',breaks=avg_score_brks)
-test_dt3 <- cutdata(test_data1,'stability_test',breaks=stability_brks)
-test_dt4 <- cutdata(test_data1,'pass_P_test',breaks=pass_p_brks)
-test_dt5 <- cutdata(test_data1,'diversity_test',breaks=diversity_brks)
-#dt6 <- cutdata(test_data,'discrimination_test',breaks=c(0,0.1,0.3,0.5,0.7,1))
-
-
-table_output2(test_dt1,title = '各学院卷面成绩平均分区间分布表')
-table_output2(test_dt3,'各学院卷面成绩稳定性区间分布表')
-table_output2(test_dt4,'各学院卷面成绩及格率区间分布表')
-table_output2(test_dt5,'各学院卷面成绩区分度区间分布表')
-# list_output(dt6,'卷面成绩差异度')
-
+table_output1(xy_Table(score_data2,'Score'),title = '专业选修类课程综合成绩相关指标汇总表')
 ```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表5的结果，可以得到全校专业选修类课程平均分为83.6分，舞蹈学院的专业选修类课程综合成绩平均分最高为87.6分，数学科学学院的专业选修类课程综合成绩平均分最低为78.2分。
+
+难度取值范围为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表5的结果，可以得到舞蹈学院的专业选修类课程难度指数最高为0.876，数学科学学院的专业选修类课程难度指数最低为0.782。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表5的结果，全校专业选修类课程成绩集中度为0.077，数学科学学院的专业选修类课程成绩集中度最大为0.121，教育科学学院的专业选修类课程成绩集中度最小为0.046。
+
+及格率反映课程综合成绩达到最低合格指标的人数占比，指标取值越大说明能够达到基本课程教学要求的人数占比越大，学生掌握情况越好。根据表5的结果，可以得到全校专业选修类课程及格率为98.7%，全校所有学院的专业选修类课程及格率均大于93%，数学科学学院专业选修类课程的及格率最低为93.5%，舞蹈学院专业选修类课程的及格率最高为99.9%。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表5的结果，全校的专业选修类课程中间50%成绩集中度是6.92，数学科学学院专业选修类课程的中间50%成绩集中度最大为10.75，教育科学学院专业选修类课程的中间50%成绩集中度最小为4.79。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表5的结果，可以得到全校的专业选修类课程高低分差异度为12.99，数学科学学院专业选修类课程的高低分差异度最大为19.86，教育科学学院专业选修类课程的高低分差异度最小为8.47。
 
 ```{r}
-
-dt1 <- cutdata(score_data1,'avg_score',breaks=avg_score_brks)
-dt3 <- cutdata(score_data1,'stability',breaks=stability_brks)
-dt4 <- cutdata(score_data1,'pass_P',breaks=pass_p_brks)
-dt5 <- cutdata(score_data1,'diversity',breaks=diversity_brks)
-
-table_output2(dt1,title = '各学院综合成绩平均分区间分布表')
-table_output2(dt3,'各学院综合成绩稳定性区间分布表')
-table_output2(dt4,'各学院综合成绩及格率区间分布表')
-table_output2(dt5,'各学院综合成绩区分度区间分布表')
-
-ps_dt1 <- cutdata(other_data1,'avg_ps_score',breaks=c(0,6,7,8,9,10))
-ps_dt3 <- cutdata(other_data1,'ps_stability',breaks=stability_brks)
-ps_dt4 <- cutdata(other_data1,'ps_diversity',breaks=diversity_brks)
-#ps_dt5 <- cutdata(other_data,'ps_discrimination',breaks=c(-1,0.1,0.3,0.5,0.7,1))
-
-table_output2(ps_dt1,title = '各学院平时成绩平均分区间分布表')
-table_output2(ps_dt3,'各学院平时成绩稳定性区间分布表')
-table_output2(ps_dt4,'各学院平时成绩区分度区间分布表')
+table_output1(xy_Table(score_data3,'Score'),title = '实践类课程综合成绩相关指标汇总表')
 ```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表6的结果，可以得到全校实践类课程平均分为84.2分，数学科学学院的实践类课程综合成绩平均分最高为89.0分，体育学院的实践类课程综合成绩平均分最低为77.3分。
+
+难度取值范围为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表6的结果，可以得到数学科学学院的实践类课程难度指数最高为0.890，体育学院的实践类课程难度指数最低为0.773。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表6的结果，全校实践类课程成绩集中度为0.067，服装与设计艺术学院的实践类课程成绩集中度最大为0.111，法学院的实践类课程成绩集中度最小为0.035。
+
+及格率反映课程综合成绩达到最低合格指标的人数占比，指标取值越大说明能够达到基本课程教学要求的人数占比越大，学生掌握情况越好。根据表6的结果，可以得到全校实践类课程及格率为99.7%，全校所有学院的实践类课程及格率均大于98%，音乐学院实践类课程的及格率最低为98.8%，教育科学学院、心理学院、马克思主义学院等9个学院的实践类课程及格率达到了100%。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表6的结果，全校的实践类课程中间50%成绩集中度是6.05，舞蹈学院实践类课程的中间50%成绩集中度最大为8.47，历史文化与旅游学院实践类课程的中间50%成绩集中度最小为3.29。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表6的结果，可以得到全校的实践类课程高低分差异度为10.34，服装与设计艺术学院实践类课程的高低分差异度最大为14.56，国际教育学院实践类课程的高低分差异度最小为4.03。
 
 ```{r}
-#str_dt1 <- cutdata(classstr_data1,'mean_str',breaks=avg_score_brks)
-#str_dt2 <- cutdata(classstr_data1,'std_str',breaks = )
+table_output1(xy_Table(score_data5,'Score'),title = '通识必修类课程综合成绩相关指标汇总表')
 ```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表7的结果，可以得到实践类课程的综合成绩平均分最高为85.7分，通识必修类课程的综合成绩平均分最低为77分。
+
+难度取值范围为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表7的结果，专业必修类课程难度指数最低为0.77，实践类课程的难度指数最高为0.857。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表7的结果，通识必修类课程的课程成绩集中度最大为0.104，实践类课程的课程成绩集中度最小为0.047。
+
+及格率反映课程综合成绩达到最低合格指标的人数占比，指标取值越大说明能够达到基本课程教学要求的人数占比越大，学生掌握情况越好。根据表7的结果，可以得到20类课程的及格率均大于99%，通识必修类课程及格率最低为96.4%，实践类课程及格率最高为99.9%。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表7的结果，通识必修类课程的中间50%成绩集中度最大为9.10，实践类课程中间50%成绩集中度最小为4.82。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表7的结果，可以得到通识必修类课程高低分差异度最大为17.10，实践类课程高低分差异度最小为10.3。
+
+## 卷面成绩
 
 ```{r}
-unusual_data <- jg_Score[jg_Score$avg_score<60,]
-write.csv(unusual_data,file='平均分异常数据.csv',fileEncoding = 'GB18030')
+table_output1(data = TestScore1,title = '各类别课程的卷面成绩相关指标汇总表')
 ```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表8的结果，可以得到实践类课程的卷面成绩平均分最高为83.8分，专业必修类课程的卷面成绩平均分最低为75.3分。
+
+难度取值范围为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表8的结果，专业必修类课程难度指数最低为0.753，实践类课程的难度指数最高为0.838。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表8的结果，通识选修类课程的课程成绩集中度最大为0.200，实践类课程的课程成绩集中度最小为0.069。
+
+及格率反映课程综合成绩达到最低合格指标的人数占比，指标取值越大说明能够达到基本课程教学要求的人数占比越大，学生掌握情况越好。根据表8的结果，可以得到专业必修类课程的及格率最低为85.0%，实践类课程及格率最高为99.6%。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表8的结果，通识选修类课程的中间50%成绩集中度最大为13.81，实践类课程中间50%成绩集中度最小为6.31。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表8的结果，可以得到通识选修类课程高低分差异度最大为21.1，实践类课程高低分差异度最小为10.7。
+\newpage
+```{r}
+table_output1(data = TestScore2,title = '各学院的卷面成绩相关指标汇总表')
+```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表9的结果，可以得到全校的卷面平均分为77.2分，国际教育学院的卷面成绩平均分最高为82.1分，物理与电子工程学院的卷面成绩平均分最低为72.6分。
+
+难度取值范围为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表9的结果，国际教育学院的考试难度指数最高为0.821，物理与电子工程学院的难度指数最低为0.726。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表9的结果，全校课程成绩集中度为0.113，物理与电子工程学院的课程成绩集中度最大为0.155，教育科学学院的课程成绩集中度最小为0.078。
+
+及格率反映课程综合成绩达到最低合格指标的人数占比，指标取值越大说明能够达到基本课程教学要求的人数占比越大，学生掌握情况越好。根据表9的结果，可以得到全校及格率为88.5%，物理与电子工程学院及格率最低为78.6%，马克思主义学院的及格率最高为95.8%。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表9的结果，全校的中间50%成绩集中度是9.93，物理与电子工程学院的中间50%成绩集中度最大为13.02，教育科学学院中间50%成绩集中度最小为7.60。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表9的结果，可以得到全校的高低分差异度为18.2，物理与电子工程学院高低分差异度最大为24.1，教育科学学院课程高低分差异度最小为13.6。
+\newpage
+```{r}
+table_output1(xy_Table(test_data1,'TestScore'),title = '专业必修类课程卷面成绩相关指标汇总表')
+```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表10的结果，可以得到全校的专业必修类课程卷面平均分为75.3分，服装与设计艺术学院的专业必修类课程卷面成绩平均分最高为83.6分，物理与电子工程学院的专业必修类课程卷面成绩平均分最低为67.8分。
+
+难度取值范围为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表10的结果，服装与设计艺术学院的专业必修类课程考试难度指数最高为0.836，物理与电子工程学院的专业必修类课程难度指数最低为0.678。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表10的结果，全校专业必修类课程成绩集中度为0.135，物理与电子工程学院的专业必修类课程成绩集中度最大为0.204，教育科学学院的专业必修类课程成绩集中度最小为0.086。
+
+及格率反映课程综合成绩达到最低合格指标的人数占比，指标取值越大说明能够达到基本课程教学要求的人数占比越大，学生掌握情况越好。根据表10的结果，可以得到全校专业必修类课程及格率为85.0%，物理与电子工程学院专业必修类课程及格率最低为68.9%，服装与设计艺术学院的专业必修类课程及格率最高为97.4%。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表10的结果，全校的专业必修类课程中间50%成绩集中度是11.72，商学院的专业必修类课程中间50%成绩集中度最大为16.85，舞蹈学院的专业必修类课程中间50%成绩集中度最小为7.72。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表10的结果，可以得到全校的专业必修类课程高低分差异度为21.5，物理与电子工程学院专业必修类课程高低分差异度最大为30.3，舞蹈学院专业必修类课程高低分差异度最小为14.2。
 
 ```{r}
-write.csv(jg_Score[jg_Score$stability>0.25,],file = '稳定性异常数据.csv',,fileEncoding = 'GB18030')
+table_output1(xy_Table(test_data2,'TestScore'),title = '专业选修类课程卷面成绩相关指标汇总表')
 ```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表11的结果，可以得到全校的专业选修类课程卷面平均分为80.8分，舞蹈学院的专业选修类课程卷面成绩平均分最高为87.9分，数学科学学院的专业选修类课程卷面成绩平均分最低为71.7分。
+
+难度取值范围为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表11的结果，舞蹈学院的专业选修类课程考试难度指数最高为0.879，数学科学学院的专业选修类课程难度指数最低为0.717。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表11的结果，全校专业选修类课程成绩集中度为0.096，数学科学学院的专业选修类课程成绩集中度最大为0.173，教育科学学院的专业选修类课程成绩集中度最小为0.052。
+
+及格率反映课程综合成绩达到最低合格指标的人数占比，指标取值越大说明能够达到基本课程教学要求的人数占比越大，学生掌握情况越好。根据表11的结果，可以得到全校专业选修类课程及格率为94.5%，数学科学学院专业选修类课程及格率最低为77.4%，舞蹈学院的专业选修类课程及格率最高，达到了100%。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表11的结果，全校的专业选修类课程中间50%成绩集中度是8.67，数学科学学院的专业选修类课程中间50%成绩集中度最大为14.77，教育科学学院的专业选修类课程中间50%成绩集中度最小为5.23。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表11的结果，可以得到全校的专业选修类课程高低分差异度为15.97，数学科学学院专业选修类课程高低分差异度最大为26.93，教育科学学院专业选修类课程高低分差异度最小为9.12。
 
 ```{r}
-write.csv(jg_Score[jg_Score$discrimination==0,],file = '区分度异常数据.csv',,fileEncoding = 'GB18030')
+table_output1(xy_Table(test_data3,'TestScore'),title = '实践类课程卷面成绩相关指标汇总表')
 ```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表12的结果，可以得到全校的卷面平均分为83.8分，数学科学学院的卷面成绩平均分最高为88.9分，体育学院的卷面成绩平均分最低为76.9分。
+
+难度取值范围为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表12的结果，数学科学学院的考试难度指数最高为0.889，体育学院的难度指数最低为0.769。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表12的结果，全校课程成绩集中度为0.069，服装与设计艺术学院的课程成绩集中度最大为0.116，生命科学学院的课程成绩集中度最小为0.039。
+
+及格率反映课程综合成绩达到最低合格指标的人数占比，指标取值越大说明能够达到基本课程教学要求的人数占比越大，学生掌握情况越好。根据表12的结果，可以得到全校及格率为0.996，商学院及格率最低为0.995，教育科学学院和国际教育学院、心理学院、马克思主义学院和生命科学学院的及格率均为1。商学院的及格率最低为0.982。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表的12结果，全校的中间50%成绩集中度是6.31，经济与管理学院的中间50%成绩集中度最大为7.62，国际教育学院的中间50%成绩集中度最小为1.67。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表12的结果，可以得到全校的高低分差异度为10.77，体育学院的高低分差异度最大为12.77，国际教育学院课程高低分差异度最小为3.54。
+
+```{r}
+table_output1(xy_Table(test_data5,'TestScore'),title = '通识必修类课程卷面成绩相关指标汇总表')
+```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表13的结果，可以得到全校的为75.8分，国际教育学院的卷面成绩平均分最高为80.9分，音乐学院的卷面成绩平均分最低为69.9分。
+
+难度取值范围为为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表13的结果，国际教育学院的考试难度指数最高为0.809，音乐学院的难度指数最低为0.609。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表13的结果，全校课程成绩集中度为0.105，音乐学院的课程成绩集中度最大为0.152，国际教育学院的课程成绩集中度最小为0.072。
+
+及格率反映课程综合成绩达到最低合格指标的人数占比，指标取值越大说明能够达到基本课程教学要求的人数占比越大，学生掌握情况越好。根据表13的结果，可以得到全校及格率为0.867，音乐学院及格率最低为0.735，马克思主义学院的及格率最高为0.965。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表13的结果，全校的中间50%成绩集中度是9.15，音乐学院的中间50%成绩集中度最大为12.16，国际教育学院中间50%成绩集中度最小为6.72。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表13的结果，可以得到全校的高低分差异度为17，音乐学院高低分差异度最大为22.8，国际教育学院课程高低分差异度最小为12.3。
+
+## 平时成绩
+
+```{r}
+table_output1(data = OtherScore1,title = '各类别课程的平时成绩相关指标汇总表')
+```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表14的结果，通识选修类课程的平时成绩平均分最低为87.0分，其他四类课程的平时平均分均大于88分。
+
+难度取值范围为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表14的结果，通识选修类课程难度指数最低为0.870，其他四类课程难度取值均大于0.88，实践类课程难度取值最高为0.887。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表14的结果，通识选修类课程的课程成绩集中度最大为0.152，实践类课程的课程成绩集中度最小为0.066。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表14的结果，通识选修类课程的中间50%成绩集中度最大为9.14，实践类课程中间50%成绩集中度最小为5.70。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表14的结果，可以得到通识选修类课程高低分差异度最大为21.1，实践类课程高低分差异度最小为10.7。
+\newpage
+```{r}
+table_output1(data = OtherScore2,title = '各学院的平时成绩相关指标汇总表')
+```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表15的结果，可以得到全校的平时平均分为88.0分，数学科学学院的平时成绩平均分最高为90.4分，体育学院的平时成绩平均分最低为85.7分。
+
+难度取值范围为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表15的结果，数学科学学院的考试难度指数最高为0.904，体育学院的难度指数最低为0.857。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表15的结果，全校课程成绩集中度为0.069，服装与设计艺术学院的课程成绩集中度最大为0.119，国际教育学院的课程成绩集中度最小为0.060。
+
+及格率反映课程综合成绩达到最低合格指标的人数占比，指标取值越大说明能够达到基本课程教学要求的人数占比越大，学生掌握情况越好。根据表15的结果，可以得到全校及格率为99.0%，全校23个学院的及格率均高于96.5%服装与设计艺术学院及格率最低为96.9%，马克思主义学院和工学院的及格率最高为99.7%。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表15的结果，全校的中间50%成绩集中度是6.25，服装与设计艺术学院的中间50%成绩集中度最大为8.59，历史文化与旅游学院中间50%成绩集中度最小为4.85。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表15的结果，可以得到全校的高低分差异度为11.64，服装与设计艺术学院高低分差异度最大为18.23，历史文化与旅游学院课程高低分差异度最小为9.39。
+\newpage
+```{r}
+table_output1(xy_Table(other_data1,'OtherScore'),title = '专业必修类课程平时成绩相关指标汇总表')
+```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表16的结果，可以得到全校的专业必修类课程平时平均分为88.0分，数学科学学院的专业必修类课程平时成绩平均分最高为91.8分，外国语学院的专业必修类课程平时成绩平均分最低为85.1分。
+
+难度取值范围为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表16的结果，数学科学学院的专业必修类课程考试难度指数最高为0.918，外国语学院的专业必修类课程难度指数最低为0.851。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表16的结果，全校专业必修类课程成绩集中度为0.068，服装与设计艺术学院的专业必修类课程成绩集中度最大为0.111，马克思主义学院的专业必修类课程成绩集中度最小为0.048。
+
+及格率反映课程综合成绩达到最低合格指标的人数占比，指标取值越大说明能够达到基本课程教学要求的人数占比越大，学生掌握情况越好。根据表16的结果，可以得到全校专业必修类课程及格率为99.1%，全校23个学院的专业必修类课程及格率均高于97.0%，音乐学院专业必修类课程及格率最低为97.1%，马克思主义学院的专业必修类课程及格率最高为99.8%。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表16的结果，全校的专业必修类课程中间50%成绩集中度是6.40，音乐学院的专业必修类课程中间50%成绩集中度最大为7.83，马克思主义学院专业必修类课程中间50%成绩集中度最小为4.89。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表16的结果，可以得到全校的专业必修类课程高低分差异度为11.64，服装与设计艺术学院专业必修类课程高低分差异度最大为16.89，马克思主义学院专业必修类课程高低分差异度最小为8.38。
+
+```{r}
+table_output1(xy_Table(other_data2,'OtherScore'),title = '专业选修类课程平时成绩相关指标汇总表')
+```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表17的结果，可以得到全校的专业选修类课程平时平均分为88.0分，地理与资源科学学院的专业选修类课程平时成绩平均分最高为91.8分，外国语学院的专业选修类课程平时成绩平均分最低为84.6分。
+
+难度取值范围为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表17的结果，地理与资源科学学院的专业选修类课程考试难度指数最高为0.918，外国语学院的专业选修类课程难度指数最低为0.846。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表17的结果，全校专业选修类课程成绩集中度为0.072，服装与设计艺术学院的专业选修类课程成绩集中度最大为0.142，历史文化与旅游学院的专业选修类课程成绩集中度最小为0.049。
+
+及格率反映课程综合成绩达到最低合格指标的人数占比，指标取值越大说明能够达到基本课程教学要求的人数占比越大，学生掌握情况越好。根据表17的结果，可以得到全校专业选修类课程及格率为98.7%，全校23个学院的专业选修类课程及格率均高于95.0%，化学与材料科学学院专业选修类课程及格率最低为95.3%，地理与资源学院、工学院以及法学院的专业选修类课程及格率最高为99.7%。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表17的结果，全校的专业选修类课程中间50%成绩集中度是6.06，服装与设计艺术学院的专业选修类课程中间50%成绩集中度最大为9.86，心理学院专业选修类课程中间50%成绩集中度最小为4.29。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表17的结果，可以得到全校的专业选修类课程高低分差异度为11.33，服装与设计艺术学院专业选修类课程高低分差异度最大为21.02，历史文化与旅游学院专业选修类课程高低分差异度最小为7.98。
+
+```{r}
+table_output1(xy_Table(other_data3,'OtherScore'),title = '实践类课程平时成绩相关指标汇总表')
+```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表18的结果，可以得到全校的卷面平均分为88.7分，物理与电子工程学院的卷面成绩平均分最高为95.9分，国际教育学院的卷面成绩平均分最低为80.5分。
+
+难度取值范围为为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表18的结果，物理与电子工程学院的考试难度指数最高为0.959，国际教育学院的难度指数最低为0.805。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表18的结果，全校课程成绩集中度为0.066，服装与设计艺术学院的课程成绩集中度最大为0.142，经济与管理学院的课程成绩集中度最小为0.024。
+
+及格率反映课程综合成绩达到最低合格指标的人数占比，指标取值越大说明能够达到基本课程教学要求的人数占比越大，学生掌握情况越好。根据表18的结果，可以得到全校及格率为0.989,服装与设计艺术学院及格率最低为0.969。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表18的结果，全校的中间50%成绩集中度是5.7，服装与设计艺术的中间50%成绩集中度最大为10.02，物理与电子工程学院的中间50%成绩集中度最小为0。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表18的结果，可以得到全校的高低分差异度为10.72，服装与设计艺术学院高低分差异度最大为21.85，工学院学院课程高低分差异度最小为2.95。
+\newpage
+```{r}
+table_output1(xy_Table(other_data5,'OtherScore'),title = '通识必修类课程平时成绩相关指标汇总表')
+```
+平均分取值范围为[0,100],指标反映出学生成绩的整体情况，指标取值越大说明学生整体成绩高。根据表19的结果，可以得到全校的卷面平均分为88.2分，国际教育学院的卷面成绩平均分最高为92.1分，舞蹈学院的卷面成绩平均分最低为83.5分。
+
+难度取值范围为为[0,1]，指标反映试题的难易程度，指标取值越小说明题难度越大。根据表19的结果，国际教育学院的考试难度指数最高为0.921，舞蹈学院的难度指数最低为0.835。
+
+课程成绩集中度反映学生综合成绩的变化波动情况，指标取值越小说明成绩越集中。根据表19的结果，全校课程成绩集中度为0.07，音乐学院的课程成绩集中度最大为0.113，国际教育学院的课程成绩集中度最小为0.043。
+
+及格率反映课程综合成绩达到最低合格指标的人数占比，指标取值越大说明能够达到基本课程教学要求的人数占比越大，学生掌握情况越好。根据表19的结果，可以得到全校及格率为0.882，舞蹈学院及格率最低为0.835，马克思主义的及格率最高为0.991。
+
+中间50%成绩集中度是（得分由高到低）排在25%与75%的分数的差，反映中间的50%的学生成绩的集中程度，集中度越小，成绩的分布越集中。根据表19的结果，全校的中间50%成绩集中度是6.15，舞蹈学院的中间50%成绩集中度最大为10.49，国际教育学院中间50%成绩集中度最小为4.38。
+
+高低分差异度为最高25%的平均分与最低25%的平均分之差，反映高低分差异，值越大，差异越高。根据表19的结果，可以得到全校的高低分差异度为11.83，音乐学院的高低分差异度最大为19.65，国际教育学院课程高低分差异度最小为7.39。
+\newpage
+
+## 成绩结构
+
+```{r}
+table_output1(data = classstr1,title = '各类别课程的成绩结构相关指标汇总表')
+```
+比例均值为卷面成绩与平时成绩之比的平均值，反映课程结构的平均水准。比例均值越接近于1时，说明课程结构越合理。根据表20的结果，可以得到实践类课程的比例均值最接近1为0.959，通识必修类课程的比例均值离1最远为0.784。
+
+绝对误差为卷面成绩与平时成绩之比与平均比值的绝对误差，反映比值分布的离散程度。误差越小，卷面成绩与平时成绩的比例分布越集中，课程结构相对越稳定。根据表20的结果，可以得到绝对误差最小的是专业选修类课程为0.103，绝对误差最大的是通识选修类课程0.272。
+
+中间50%成绩集中度为面成绩与平时成绩之比的上四分位数与下四分位数之差，反映中间百分之五十卷面成绩与平时成绩比例的离散程度。值越小，课程成绩结构越稳定。根据表20的结果，可以得到实践类课程的取值最小为0.086，通识必修类课程的取值最大为0.131。
+
+合理度为平时成绩与卷面成绩之比与1的平均绝对偏差，反映平时成绩与卷面成绩的构成的合理度。课程成绩结构合理度越小，课程成绩结构越合理。根据表20的结果，可以得到通识必修类课程的合理度取值最大为0.229，实践类课程的合理度取值最小为0.229。
+\newpage
+```{r}
+table_output1(data = classstr2,title = '各学院的成绩结构相关指标汇总表')
+```
+比例均值为卷面成绩与平时成绩之比的平均值，反映课程结构的平均水准。比例均值越接近于1时，说明课程结构越合理。根据表21的结果，可以得到全校的比例均值为0.854，舞蹈学院的比例均值最接近1为0.926，数学科学学院的比例均值离1最远为0.761。
+
+绝对误差为卷面成绩与平时成绩之比与平均比值的绝对误差，反映比值分布的离散程度。误差越小，卷面成绩与平时成绩的比例分布越集中，课程结构相对越稳定。根据表21的结果，可以得到全校的绝对误差为0.115，绝对误差最小的是马克思主义学院为0.086，绝对误差最大的是音乐学院为0.156。
+
+中间50%成绩集中度为面成绩与平时成绩之比的上四分位数与下四分位数之差，反映中间百分之五十卷面成绩与平时成绩比例的离散程度。值越小，课程成绩结构越稳定。根据表21的结果，可以得到全校的中间50%成绩集中度为0.130，美术学院·书法学院的中间50%成绩集中度最小为0.100，物理与电子工程学院的中间50%成绩集中度最大为0.172。
+
+合理度为平时成绩与卷面成绩之比与1的平均绝对偏差，反映平时成绩与卷面成绩的构成的合理度。课程成绩结构合理度越小，课程成绩结构越合理。根据表21的结果，可以得到全校合理度为0.178，数学科学学院的合理度取值最大为0.251，美术学院·书法学院的合理度取值最小为0.133。
+\newpage
+```{r}
+table_output1(xy_Table(classstr_data1,'classstr'),title = '专业必修类课程成绩结构相关指标汇总表')
+```
+比例均值为卷面成绩与平时成绩之比的平均值，反映课程结构的平均水准。比例均值越接近于1时，说明课程结构越合理。根据表22的结果，可以得到全校的专业必修类课程比例均值为0.851，服装与设计艺术学院的专业必修类课程比例均值最接近1为0.982，物理与电子工程学院的专业必修类课程比例均值离1最远为0.728。
+
+绝对误差为卷面成绩与平时成绩之比与平均比值的绝对误差，反映比值分布的离散程度。误差越小，卷面成绩与平时成绩的比例分布越集中，课程结构相对越稳定。根据表22的结果，可以得到全校的专业必修类课程绝对误差为0.118，专业必修类课程绝对误差最小的是美术学院·书法学院为0.080，专业必修类课程绝对误差最大的是物理与电子工程学院为0.168。
+
+中间50%成绩集中度为面成绩与平时成绩之比的上四分位数与下四分位数之差，反映中间百分之五十卷面成绩与平时成绩比例的离散程度。值越小，课程成绩结构越稳定。根据表22的结果，可以得到全校的专业必修类课程中间50%成绩集中度为0.137，服装与设计艺术学院的专业必修类课程中间50%成绩集中度最小为0.084，物理与电子工程学院的专业必修类课程中间50%成绩集中度最大为0.204。
+
+合理度为平时成绩与卷面成绩之比与1的平均绝对偏差，反映平时成绩与卷面成绩的构成的合理度。课程成绩结构合理度越小，课程成绩结构越合理。根据表22的结果，可以得到全校专业必修类课程合理度为0.180，物理与电子工程学院的专业必修类课程合理度取值最大为0.295，服装与设计艺术学院的专业必修类课程合理度取值最小为0.092。
+\newpage
+```{r}
+table_output1(xy_Table(classstr_data2,'classstr'),title = '专业选修类课程成绩结构相关指标汇总表')
+```
+比例均值为卷面成绩与平时成绩之比的平均值，反映课程结构的平均水准。比例均值越接近于1时，说明课程结构越合理。根据表23的结果，可以得到全校的专业选修类课程比例均值为0.922，服装与设计艺术学院的专业选修类课程比例均值最接近1为1.010，数学科学学院的专业选修类课程比例均值离1最远为0.782。
+
+绝对误差为卷面成绩与平时成绩之比与平均比值的绝对误差，反映比值分布的离散程度。误差越小，卷面成绩与平时成绩的比例分布越集中，课程结构相对越稳定。根据表23的结果，可以得到全校的专业选修类课程绝对误差为0.103，专业选修类课程绝对误差最小的是美术学院·书法学院为0.052，专业选修类课程绝对误差最大的是服装与设计艺术学院为0.172。
+
+中间50%成绩集中度为面成绩与平时成绩之比的上四分位数与下四分位数之差，反映中间百分之五十卷面成绩与平时成绩比例的离散程度。值越小，课程成绩结构越稳定。根据表23的结果，可以得到全校的专业选修类课程中间50%成绩集中度为0.107，美术学院·书法学院的专业选修类课程中间50%成绩集中度最小为0.055，数学科学学院的专业选修类课程中间50%成绩集中度最大为0.161。
+
+合理度为平时成绩与卷面成绩之比与1的平均绝对偏差，反映平时成绩与卷面成绩的构成的合理度。课程成绩结构合理度越小，课程成绩结构越合理。根据表23的结果，可以得到全校专业选修类课程合理度为0.130，数学科学学院的专业选修类课程合理度取值最大为0.231，美术学院·书法学院的专业选修类课程合理度取值最小为0.058。
+\newpage
+```{r}
+table_output1(xy_Table(classstr_data3,'classstr'),title = '实践类课程成绩结构相关指标汇总表')
+```
+比例均值为卷面成绩与平时成绩之比的平均值，反映课程结构的平均水准。比例均值越接近于1时，说明课程结构越合理。根据表24的结果，可以得到国际教育学院的比例均值最接近1为1.116，物理与电子工程学院的比例均值离1最远为0.870。
+
+绝对误差为卷面成绩与平时成绩之比与平均比值的绝对误差，反映比值分布的离散程度。误差越小，卷面成绩与平时成绩的比例分布越集中，课程结构相对越稳定。根据表24的结果，可以得到绝对误差最小的是化学与材料科学学院为0.014，绝对误差最大的是国际教育学院为0.143。
+
+中间50%成绩集中度为面成绩与平时成绩之比的上四分位数与下四分位数之差，反映中间百分之五十卷面成绩与平时成绩比例的离散程度。值越小，课程成绩结构越稳定。根据表24的结果，可以得到地理与资源科学学院的取值最小为0.045，计算机科学学院的取值最大为0.151。
+
+合理度为平时成绩与卷面成绩之比与1的平均绝对偏差，反映平时成绩与卷面成绩的构成的合理度。课程成绩结构合理度越小，课程成绩结构越合理。根据表24的结果，可以得到物理与电子工程学院的合理度取值最大为0.176，教育科学学院的合理度取值最小为0.038。
+\newpage
+```{r}
+table_output1(xy_Table(classstr_data5,'classstr'),title = '通识必修类课程成绩结构相关指标汇总表')
+```
+比例均值为卷面成绩与平时成绩之比的平均值，反映课程结构的平均水准。比例均值越接近于1时，说明课程结构越合理。根据表25的结果，可以得到马克思主义学院的比例均值最接近1为0.844，音乐学院的比例均值离1最远为0.733。
+
+绝对误差为卷面成绩与平时成绩之比与平均比值的绝对误差，反映比值分布的离散程度。误差越小，卷面成绩与平时成绩的比例分布越集中，课程结构相对越稳定。根据表25的结果，可以得到绝对误差最小的是国际教育学院为0.093，绝对误差最大的是舞蹈学院为0.188。
+
+中间50%成绩集中度为面成绩与平时成绩之比的上四分位数与下四分位数之差，反映中间百分之五十卷面成绩与平时成绩比例的离散程度。值越小，课程成绩结构越稳定。根据表25的结果，可以得到马克思主义学院的取值最小为0.105，舞蹈学院的取值最大为0.223。
+
+合理度为平时成绩与卷面成绩之比与1的平均绝对偏差，反映平时成绩与卷面成绩的构成的合理度。课程成绩结构合理度越小，课程成绩结构越合理。根据表25的结果，可以得到音乐学院的合理度取值最大为0.293，马克思主义学院的合理度取值最小为0.166。
+
+\newpage
+
+# **五、学生成绩的分布情况**
+```{r}
+score1_dt1 <- cutdata(score_data1,'avg_score',breaks=avg_score_brks)
+score1_dt2 <- cutdata(score_data1,'difficulty',breaks=c(0.6,0.7,0.8,0.9,1))
+score1_dt3 <- cutdata(score_data1,'stability',breaks=stability_brks)
+score1_dt4 <- cutdata(score_data1,'pass_P',breaks=pass_p_brks)
+score1_dt5 <- cutdata(score_data1,'diversity',breaks=diversity_brks)
+score1_dt6 <- ds_table(score_data1,'discrimination_test')
+score2_dt1 <- cutdata(score_data2,'avg_score',breaks=avg_score_brks)
+score2_dt2 <- cutdata(score_data2,'difficulty',breaks=c(0.6,0.7,0.8,0.9,1))
+score2_dt3 <- cutdata(score_data2,'stability',breaks=stability_brks)
+score2_dt4 <- cutdata(score_data2,'pass_P',breaks=pass_p_brks)
+score2_dt5 <- cutdata(score_data2,'diversity',breaks=diversity_brks)
+score2_dt6 <- ds_table(score_data2,'discrimination_test')
+score3_dt1 <- cutdata(score_data3,'avg_score',breaks=avg_score_brks)
+score3_dt2 <- cutdata(score_data3,'difficulty',breaks=c(0.6,0.7,0.8,0.9,1))
+score3_dt3 <- cutdata(score_data3,'stability',breaks=stability_brks)
+score3_dt4 <- cutdata(score_data3,'pass_P',breaks=pass_p_brks)
+score3_dt5 <- cutdata(score_data3,'diversity',breaks=diversity_brks)
+score3_dt6 <- ds_table(score_data3,'discrimination_test')
+score5_dt1 <- cutdata(score_data5,'avg_score',breaks=avg_score_brks)
+score5_dt2 <- cutdata(score_data5,'difficulty',breaks=c(0.6,0.7,0.8,0.9,1))
+score5_dt3 <- cutdata(score_data5,'stability',breaks=stability_brks)
+score5_dt4 <- cutdata(score_data5,'pass_P',breaks=pass_p_brks)
+score5_dt5 <- cutdata(score_data5,'diversity',breaks=diversity_brks)
+score5_dt6 <- ds_table(score_data5,'discrimination_test')
+test1_dt1 <- cutdata(test_data1,'avg_score_test',breaks=avg_score_brks)
+test1_dt2 <- cutdata(test_data1,'difficulty_test',breaks=c(0.6,0.7,0.8,0.9,1))
+test1_dt3 <- cutdata(test_data1,'stability_test',breaks=stability_brks)
+test1_dt4 <- cutdata(test_data1,'pass_P_test',breaks=pass_p_brks)
+test1_dt5 <- cutdata(test_data1,'diversity_test',breaks=diversity_brks)
+test1_dt6 <- ds_table(test_data1,'discrimination_test')
+test2_dt1 <- cutdata(test_data2,'avg_score_test',breaks=avg_score_brks)
+test2_dt2 <- cutdata(test_data2,'difficulty_test',breaks=c(0.6,0.7,0.8,0.9,1))
+test2_dt3 <- cutdata(test_data2,'stability_test',breaks=stability_brks)
+test2_dt4 <- cutdata(test_data2,'pass_P_test',breaks=pass_p_brks)
+test2_dt5 <- cutdata(test_data2,'diversity_test',breaks=diversity_brks)
+test2_dt6 <- ds_table(test_data2,'discrimination_test')
+test3_dt1 <- cutdata(test_data3,'avg_score_test',breaks=avg_score_brks)
+test3_dt2 <- cutdata(test_data3,'difficulty_test',breaks=c(0.6,0.7,0.8,0.9,1))
+test3_dt3 <- cutdata(test_data3,'stability_test',breaks=stability_brks)
+test3_dt4 <- cutdata(test_data3,'pass_P_test',breaks=pass_p_brks)
+test3_dt5 <- cutdata(test_data3,'diversity_test',breaks=diversity_brks)
+test3_dt6 <- ds_table(test_data3,'discrimination_test')
+test5_dt1 <- cutdata(test_data5,'avg_score_test',breaks=avg_score_brks)
+test5_dt2 <- cutdata(test_data5,'difficulty_test',breaks=c(0.6,0.7,0.8,0.9,1))
+test5_dt3 <- cutdata(test_data5,'stability_test',breaks=stability_brks)
+test5_dt4 <- cutdata(test_data5,'pass_P_test',breaks=pass_p_brks)
+test5_dt5 <- cutdata(test_data5,'diversity_test',breaks=diversity_brks)
+test5_dt6 <- ds_table(test_data5,'discrimination_test')
+ps1_dt1 <- cutdata(other_data1,'avg_ps_score',breaks=avg_score_brks)
+ps1_dt2 <- cutdata(other_data1,'ps_difficulty',breaks=c(0.6,0.7,0.8,0.9,1))
+ps1_dt3 <- cutdata(other_data1,'ps_stability',breaks=stability_brks)
+ps1_dt4 <- cutdata(other_data1,'passP_ps_socre',breaks=pass_p_brks)
+ps1_dt5 <- cutdata(other_data1,'ps_diversity',breaks=diversity_brks)
+ps1_dt6 <- ds_table(other_data1,'ps_discrimination')
+ps2_dt1 <- cutdata(other_data2,'avg_ps_score',breaks=avg_score_brks)
+ps2_dt2 <- cutdata(other_data2,'ps_difficulty',breaks=c(0.6,0.7,0.8,0.9,1))
+ps2_dt3 <- cutdata(other_data2,'ps_stability',breaks=stability_brks)
+ps2_dt4 <- cutdata(other_data2,'passP_ps_socre',breaks=pass_p_brks)
+ps2_dt5 <- cutdata(other_data2,'ps_diversity',breaks=diversity_brks)
+ps2_dt6 <- ds_table(other_data2,'ps_discrimination')
+ps3_dt1 <- cutdata(other_data3,'avg_ps_score',breaks=avg_score_brks)
+ps3_dt2 <- cutdata(other_data3,'ps_difficulty',breaks=c(0.6,0.7,0.8,0.9,1))
+ps3_dt3 <- cutdata(other_data3,'ps_stability',breaks=stability_brks)
+ps3_dt4 <- cutdata(other_data3,'passP_ps_socre',breaks=pass_p_brks)
+ps3_dt5 <- cutdata(other_data3,'ps_diversity',breaks=diversity_brks)
+ps3_dt6 <- ds_table(other_data3,'ps_discrimination')
+ps5_dt1 <- cutdata(other_data5,'avg_ps_score',breaks=avg_score_brks)
+ps5_dt2 <- cutdata(other_data5,'ps_difficulty',breaks=c(0.6,0.7,0.8,0.9,1))
+ps5_dt3 <- cutdata(other_data5,'ps_stability',breaks=stability_brks)
+ps5_dt4 <- cutdata(other_data5,'passP_ps_socre',breaks=pass_p_brks)
+ps5_dt5 <- cutdata(other_data5,'ps_diversity',breaks=diversity_brks)
+ps5_dt6 <- ds_table(other_data5,'ps_discrimination')
+str1_dt1 <- cutdata(classstr_data1,'mean_str',breaks=avg_score_brks/100)
+str1_dt2 <- cutdata(classstr_data1,'std_str',breaks = c(0,0.05,0.1,0.15,0.2,0.3,max(classstr_data1[['std_str']])))
+str1_dt3 <- cutdata(classstr_data1,'diversity_str',breaks = diversity_brks/100)
+str1_dt4 <- cutdata(classstr_data1,'HeLiDu_str',breaks = c(0,0.05,0.1,0.15,0.2,1))
+str2_dt1 <- cutdata(classstr_data2,'mean_str',breaks=avg_score_brks/100)
+str2_dt2 <- cutdata(classstr_data2,'std_str',breaks = c(0,0.05,0.1,0.15,0.2,0.3,max(classstr_data1[['std_str']])))
+str2_dt3 <- cutdata(classstr_data2,'diversity_str',breaks = diversity_brks/100)
+str2_dt4 <- cutdata(classstr_data2,'HeLiDu_str',breaks = c(0,0.05,0.1,0.15,0.2,1))
+str3_dt1 <- cutdata(classstr_data3,'mean_str',breaks=avg_score_brks/100)
+str3_dt2 <- cutdata(classstr_data3,'std_str',breaks = c(0,0.05,0.1,0.15,0.2,0.3,max(classstr_data1[['std_str']])))
+str3_dt3 <- cutdata(classstr_data3,'diversity_str',breaks = diversity_brks/100)
+str3_dt4 <- cutdata(classstr_data3,'HeLiDu_str',breaks = c(0,0.05,0.1,0.15,0.2,1))
+str5_dt1 <- cutdata(classstr_data5,'mean_str',breaks=avg_score_brks/100)
+str5_dt2 <- cutdata(classstr_data5,'std_str',breaks = c(0,0.05,0.1,0.15,0.2,0.3,max(classstr_data1[['std_str']])))
+str5_dt3 <- cutdata(classstr_data5,'diversity_str',breaks = diversity_brks/100)
+str5_dt4 <- cutdata(classstr_data5,'HeLiDu_str',breaks = c(0,0.05,0.1,0.15,0.2,1))
+```
+
+## 综合成绩
+
+### 专业必修类课程
+
+```{r,out.width="75%",fig.cap='综合成绩专业必修类课程平均值的分布情况',fig.align='center'}
+table_output2(score1_dt1,title = '专业必修类课程各学院综合成绩平均分区间分布表')
+```
+
+
+```{r,out.width="75%",fig.cap='综合成绩专业必修类课程平均值的分布情况',fig.align='center',fig.pos='h'}
+knitr::include_graphics("图/综合成绩专业必修类课程平均值的分布情况.png")
+```
+\newpage
+```{r,out.width="75%",fig.cap='综合成绩专业必修类课程难度的分布情况',fig.align='center'}
+table_output2(score1_dt2,title = '专业必修类课程各学院综合成绩难度区间分布表')
+```
+
+
+```{r,out.width="75%",fig.cap='综合成绩专业必修类课程难度的分布情况',fig.align='center',fig.pos='h'}
+knitr::include_graphics("图/综合成绩专业必修类课程难度的分布情况.png")
+```
+\newpage
+```{r,out.width="75%",fig.cap='综合成绩专业必修类课程成绩集中度的分布情况',fig.align='center'}
+table_output2(score1_dt3,'专业必修类课程各学院综合成绩课程成绩集中度区间分布表')
+```
+
+
+```{r,out.width="75%",fig.cap='综合成绩专业必修类课程成绩集中度的分布情况',fig.align='center',fig.pos='h'}
+knitr::include_graphics("图/综合成绩专业必修类课程课程成绩集中度的分布情况.png")
+```
+\newpage
+```{r,out.width="75%",fig.cap='综合成绩专业必修类课程及格率的分布情况',fig.align='center',fig.pos='h'}
+table_output2(score1_dt4,'专业必修类课程各学院综合成绩及格率区间分布表')
+knitr::include_graphics("图/综合成绩专业必修类课程及格率的分布情况.png")
+```
+\newpage
+```{r,out.width="75%",fig.cap='综合成绩专业必修类课程中间成绩集中度的分布情况',fig.align='center'}
+table_output2(score1_dt5,'专业必修类课程各学院综合成绩中间成绩集中度区间分布表')
+knitr::include_graphics("图/综合成绩专业必修类课程中间成绩集中度的分布情况.png")
+```
+\newpage
+```{r,out.width="75%",fig.cap='综合成绩专业必修类课程高低分差异度的分布情况',fig.align='center'}
+table_output1(score1_dt6,title = '专业必修类课程各学院综合成绩高低分差异度描述统计表')
+knitr::include_graphics("图/综合成绩专业必修类课程高低分差异度的分布情况.png")
+```
+
+\newpage
+
+
+### 专业选修类课程
+
+```{r,out.width="75%",fig.cap='综合成绩专业选修类课程平均值的分布情况',fig.align='center'}
+table_output2(score2_dt1,title = '专业选修类课程各学院综合成绩平均分区间分布表')
+knitr::include_graphics("图/综合成绩专业选修类课程平均值的分布情况.png")
+```
+\newpage
+```{r,out.width="75%",,fig.cap='综合成绩专业选修类课程难度的分布情况',fig.align='center'}
+table_output2(score2_dt2,title = '专业选修类课程各学院综合成绩难度区间分布表')
+knitr::include_graphics("图/综合成绩专业选修类课程难度的分布情况.png")
+```
+\newpage
+```{r,out.width="75%",fig.cap='综合成绩专业选修类课程成绩集中度的分布情况',fig.align='center'}
+table_output2(score2_dt3,'专业选修类课程各学院综合成绩课程成绩集中度区间分布表')
+knitr::include_graphics("图/综合成绩专业选修类课程课程成绩集中度的分布情况.png")
+```
+\newpage
+```{r,out.width="75%",fig.cap='综合成绩专业选修类课程及格率的分布情况',fig.align='center'}
+table_output2(score2_dt4,'专业选修类课程各学院综合成绩及格率区间分布表')
+knitr::include_graphics("图/综合成绩专业选修类课程及格率的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='综合成绩专业选修类课程中间成绩集中度的分布情况',fig.align='center'}
+table_output2(score2_dt5,'专业选修类课程各学院综合成绩中间成绩集中度区间分布表')
+knitr::include_graphics("图/综合成绩专业选修类课程中间成绩集中度的分布情况.png")
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='综合成绩专业选修类课程高低分差异度的分布情况',fig.align='center'}
+table_output1(score2_dt6,title = '专业选修类课程各学院综合成绩高低分差异度描述统计表')
+knitr::include_graphics("图/综合成绩专业选修类课程高低分差异度的分布情况.png")
+```
+
+\newpage
+
+
+### 实践类课程
+
+```{r,out.width="75%",fig.cap='综合成绩综合实践类课程平均值的分布情况',fig.align='center'}
+table_output2(score3_dt1,title = '实践类课程各学院综合成绩平均分区间分布表')
+knitr::include_graphics("图/综合成绩综合实践类课程平均值的分布情况.png")
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='综合成绩综合实践类课程难度的分布情况',fig.align='center'}
+table_output2(score3_dt2,title = '实践类课程各学院综合成绩难度区间分布表')
+knitr::include_graphics("图/综合成绩综合实践类课程难度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='综合成绩综合实践类课程成绩集中度的分布情况',fig.align='center'}
+table_output2(score3_dt3,'实践类课程各学院综合成绩课程成绩集中度区间分布表')
+knitr::include_graphics("图/综合成绩综合实践类课程课程成绩集中度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='综合成绩综合实践类课程及格率的分布情况',fig.align='center'}
+table_output2(score3_dt4,'实践类课程各学院综合成绩及格率区间分布表')
+knitr::include_graphics("图/综合成绩综合实践类课程及格率的分布情况.png")
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='综合成绩综合实践类课程中间成绩集中度的分布情况',fig.align='center'}
+table_output2(score3_dt5,'实践类课程各学院综合成绩中间成绩集中度区间分布表')
+knitr::include_graphics("图/综合成绩综合实践类课程中间成绩集中度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='综合成绩综合实践类课程高低分差异度的分布情况',fig.align='center'}
+table_output1(score3_dt6,title = '实践类课程各学院综合成绩高低分差异度描述统计表')
+knitr::include_graphics("图/综合成绩综合实践类课程高低分差异度的分布情况.png")
+```
+
+\newpage
+
+
+### 通识必修类课程
+
+```{r,out.width="75%",fig.cap='综合成绩通识必修类课程平均值的分布情况',fig.align='center'}
+table_output2(score5_dt1,title = '通识必修类课程各学院综合成绩平均分区间分布表')
+knitr::include_graphics("图/综合成绩通识必修类课程平均值的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='综合成绩通识必修类课程难度的分布情况',fig.align='center'}
+table_output2(score5_dt2,title = '通识必修类课程各学院综合成绩难度区间分布表')
+knitr::include_graphics("图/综合成绩通识必修类课程难度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='综合成绩通识必修类课程成绩集中度的分布情况',fig.align='center'}
+table_output2(score5_dt3,'通识必修类课程各学院综合成绩课程成绩集中度区间分布表')
+knitr::include_graphics("图/综合成绩通识必修类课程课程成绩集中度的分布情况.png")
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='综合成绩通识必修类课程及格率的分布情况',fig.align='center'}
+table_output2(score5_dt4,'通识必修类课程各学院综合成绩及格率区间分布表')
+knitr::include_graphics("图/综合成绩通识必修类课程及格率的分布情况.png")
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='综合成绩通识必修类课程中间成绩集中度的分布情况',fig.align='center'}
+table_output2(score5_dt5,'通识必修类课程各学院综合成绩中间成绩集中度区间分布表')
+knitr::include_graphics("图/综合成绩通识必修类课程中间成绩集中度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='综合成绩通识必修类课程高低分差异度的分布情况',fig.align='center'}
+table_output1(score5_dt6,title = '通识必修类课程各学院综合成绩高低分差异度描述统计表')
+knitr::include_graphics("图/综合成绩通识必修类课程高低分差异度的分布情况.png")
+```
+
+```{=tex}
+\newpage
+\newpage
+```
+
+## 卷面成绩
+
+### 专业必修类课程
+
+```{r,out.width="75%",fig.cap='卷面成绩专业必修类课程平均值的分布情况',fig.align='center'}
+table_output2(test1_dt1,title = '专业必修类课程各学院卷面成绩平均分区间分布表')
+knitr::include_graphics("图/卷面成绩专业必修类课程平均值的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='卷面成绩专业必修类课程难度的分布情况',fig.align='center'}
+table_output2(test1_dt2,title = '专业必修类课程各学院卷面成绩难度区间分布表')
+knitr::include_graphics("图/卷面成绩专业必修类课程难度的分布情况.png")#
+```
+
+```{r,out.width="75%",fig.cap='卷面成绩专业必修类课程成绩集中度的分布情况',fig.align='center'}
+table_output2(test1_dt3,'专业必修类课程各学院卷面成绩课程成绩集中度区间分布表')
+knitr::include_graphics("图/卷面成绩专业必修类课程课程成绩集中度的分布情况.png")#
+```
+
+```{r,out.width="75%",fig.cap='卷面成绩专业必修类课程及格率的分布情况',fig.align='center'}
+table_output2(test1_dt4,'专业必修类课程各学院卷面成绩及格率区间分布表')
+knitr::include_graphics("图/卷面成绩专业必修类课程及格率的分布情况.png")
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='卷面成绩专业必修类课程中间成绩集中度的分布情况',fig.align='center'}
+table_output2(test1_dt5,'专业必修类课程各学院卷面成绩中间成绩集中度区间分布表')
+knitr::include_graphics("图/卷面成绩专业必修类课程中间成绩集中度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='卷面成绩专业必修类课程高低分差异度的分布情况',fig.align='center'}
+table_output1(test1_dt6,title = '专业必修类课程各学院卷面成绩高低分差异度描述统计表')
+knitr::include_graphics("图/卷面成绩专业必修类课程高低分差异度的分布情况.png")#
+```
+
+\newpage
+
+
+### 专业选修类课程
+
+```{r,out.width="75%",fig.cap='卷面成绩专业选修类课程平均值的分布情况',fig.align='center'}
+table_output2(test2_dt1,title = '专业选修类课程各学院卷面成绩平均分区间分布表')
+knitr::include_graphics("图/卷面成绩专业选修类课程平均值的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='卷面成绩专业选修类课程难度的分布情况',fig.align='center'}
+table_output2(test2_dt2,title = '专业选修类课程各学院卷面成绩难度区间分布表')
+knitr::include_graphics("图/卷面成绩专业选修类课程难度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='卷面成绩专业选修类课程成绩集中度的分布情况',fig.align='center'}
+table_output2(test2_dt3,'专业选修类课程各学院卷面成绩课程成绩集中度区间分布表')
+knitr::include_graphics("图/卷面成绩专业选修类课程课程成绩集中度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='卷面成绩专业选修类课程及格率的分布情况',fig.align='center'}
+table_output2(test2_dt4,'专业选修类课程各学院卷面成绩及格率区间分布表')
+knitr::include_graphics("图/卷面成绩专业选修类课程及格率的分布情况.png")
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='卷面成绩专业选修类课程成绩集中度的分布情况',fig.align='center'}
+table_output2(test2_dt5,'专业选修类课程各学院卷面成绩中间成绩集中度区间分布表')
+knitr::include_graphics("图/卷面成绩专业选修类课程中间成绩集中度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='卷面成绩专业选修类课程高低分差异度的分布情况',fig.align='center'}
+table_output1(test2_dt6,title = '专业选修类课程各学院卷面成绩高低分差异度描述统计表')
+knitr::include_graphics("图/卷面成绩专业选修类课程高低分差异度的分布情况.png")
+```
+
+\newpage
+
+
+### 实践类课程
+
+```{r,out.width="75%",fig.cap='卷面成绩综合实践类课程平均值的分布情况',fig.align='center'}
+table_output2(test3_dt1,title = '实践类课程各学院卷面成绩平均分区间分布表')
+knitr::include_graphics("图/卷面成绩综合实践类课程平均值的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='卷面成绩综合实践类课程难度的分布情况',fig.align='center'}
+table_output2(test3_dt2,title = '实践类课程各学院卷面成绩难度区间分布表')
+knitr::include_graphics("图/卷面成绩综合实践类课程难度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='卷面成绩综合实践类课程成绩集中度的分布情况',fig.align='center'}
+table_output2(test3_dt3,'实践类课程各学院卷面成绩课程成绩集中度区间分布表')
+knitr::include_graphics("图/卷面成绩综合实践类课程课程成绩集中度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='卷面成绩综合实践类课程及格率的分布情况',fig.align='center'}
+table_output2(test3_dt4,'实践类课程各学院卷面成绩及格率区间分布表')
+knitr::include_graphics("图/卷面成绩综合实践类课程及格率的分布情况.png")#
+```
+
+```{r,out.width="75%",fig.cap='卷面成绩综合实践类课程中间成绩集中度的分布情况',fig.align='center'}
+table_output2(test3_dt5,'实践类课程各学院卷面成绩中间成绩集中度区间分布表')
+knitr::include_graphics("图/卷面成绩综合实践类课程中间成绩集中度的分布情况.png")
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='卷面成绩综合实践类课程高低分差异度的分布情况',fig.align='center'}
+table_output1(test3_dt6,title = '实践类课程各学院卷面成绩高低分差异度描述统计表')
+knitr::include_graphics("图/卷面成绩综合实践类课程高低分差异度的分布情况.png")
+```
+
+\newpage
+
+
+### 通识必修类课程
+
+```{r,out.width="75%",fig.cap='卷面成绩通识必修类课程平均值的分布情况',fig.align='center'}
+table_output2(test5_dt1,title = '通识必修类课程各学院卷面成绩平均分区间分布表')
+knitr::include_graphics("图/卷面成绩通识必修类课程平均值的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='卷面成绩通识必修类课程难度的分布情况',fig.align='center'}
+table_output2(test5_dt2,title = '通识必修类课程各学院卷面成绩难度区间分布表')
+knitr::include_graphics("图/卷面成绩通识必修类课程难度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='卷面成绩通识必修类课程成绩集中度的分布情况',fig.align='center'}
+table_output2(test5_dt3,'通识必修类课程各学院卷面成绩课程成绩集中度区间分布表')
+knitr::include_graphics("图/卷面成绩通识必修类课程课程成绩集中度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='卷面成绩通识必修类课程及格率的分布情况',fig.align='center'}
+table_output2(test5_dt4,'通识必修类课程各学院卷面成绩及格率区间分布表')
+knitr::include_graphics("图/卷面成绩通识必修类课程及格率的分布情况.png")
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='卷面成绩通识必修类课程成绩集中度的分布情况',fig.align='center'}
+table_output2(test5_dt5,'通识必修类课程各学院卷面成绩中间成绩集中度区间分布表')
+knitr::include_graphics("图/卷面成绩通识必修类课程中间成绩集中度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='卷面成绩通识必修类课程高低分差异度的分布情况',fig.align='center'}
+table_output1(test5_dt6,title = '通识必修类课程各学院卷面成绩高低分差异度描述统计表')
+knitr::include_graphics("图/卷面成绩通识必修类课程高低分差异度的分布情况.png")
+```
+
+```{=tex}
+\newpage
+\newpage
+```
+
+## 平时成绩
+
+### 专业必修类课程
+
+```{r,out.width="75%",fig.cap='平时成绩专业必修类课程平均值的分布情况',fig.align='center'}
+table_output2(ps1_dt1,title = '专业必修类课程各学院平时成绩平均分区间分布表')
+knitr::include_graphics("图/平时成绩专业必修类课程平均值的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='平时成绩专业必修类课程难度的分布情况',fig.align='center'}
+table_output2(ps1_dt2,title = '专业必修类课程各学院平时成绩难度区间分布表')
+knitr::include_graphics("图/平时成绩专业必修类课程难度的分布情况.png")#
+```
+
+```{r,out.width="75%",fig.cap='平时成绩专业必修类课程成绩集中度的分布情况',fig.align='center'}
+table_output2(ps1_dt3,'专业必修类课程各学院平时成绩课程成绩集中度区间分布表')
+knitr::include_graphics("图/平时成绩专业必修类课程课程成绩集中度的分布情况.png")#
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='平时成绩专业必修类课程及格率的分布情况',fig.align='center'}
+table_output2(ps1_dt4,'专业必修类课程各学院平时成绩及格率区间分布表')
+knitr::include_graphics("图/平时成绩专业必修类课程及格率的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='平时成绩专业必修类课程中间成绩集中度的分布情况',fig.align='center'}
+table_output2(ps1_dt5,'专业必修类课程各学院平时成绩中间成绩集中度区间分布表')
+knitr::include_graphics("图/平时成绩专业必修类课程中间成绩集中度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='平时成绩专业必修类课程高低分差异度的分布情况',fig.align='center'}
+table_output1(ps1_dt6,'专业必修类课程各学院平时成绩高低分差异度描述统计表')
+knitr::include_graphics("图/平时成绩专业必修类课程高低分差异度的分布情况.png")
+```
+
+\newpage
+
+
+### 专业选修类课程
+
+```{r,out.width="75%",fig.cap='平时成绩专业选修类课程平均值的分布情况',fig.align='center'}
+table_output2(ps2_dt1,title = '专业选修类课程各学院平时成绩平均分区间分布表')
+knitr::include_graphics("图/平时成绩专业选修类课程平均值的分布情况.png")
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='平时成绩专业选修类课程难度的分布情况',fig.align='center'}
+table_output2(ps2_dt2,title = '专业选修类课程各学院平时成绩难度区间分布表')
+knitr::include_graphics("图/平时成绩专业选修类课程难度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='平时成绩专业选修类课程成绩集中度的分布情况',fig.align='center'}
+table_output2(ps2_dt3,'专业选修类课程各学院平时成绩课程成绩集中度区间分布表')
+knitr::include_graphics("图/平时成绩专业选修类课程课程成绩集中度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='平时成绩专业选修类课程及格率的分布情况',fig.align='center'}
+table_output2(ps2_dt4,'专业选修类课程各学院平时成绩及格率区间分布表')
+knitr::include_graphics("图/平时成绩专业选修类课程及格率的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='平时成绩专业选修类课程成绩集中度的分布情况',fig.align='center'}
+table_output2(ps2_dt5,'专业选修类课程各学院平时成绩中间成绩集中度区间分布表')
+knitr::include_graphics("图/平时成绩专业选修类课程中间成绩集中度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='平时成绩专业选修类课程高低分差异度的分布情况',fig.align='center'}
+table_output1(ps2_dt6,'专业选修类课程各学院平时成绩高低分差异度描述统计表')
+knitr::include_graphics("图/平时成绩专业选修类课程高低分差异度的分布情况.png")
+```
+
+\newpage
+
+
+### 实践类课程
+
+```{r,out.width="75%",fig.cap='平时成绩综合实践类课程平均值的分布情况',fig.align='center'}
+table_output2(ps3_dt1,title = '实践类课程各学院平时成绩平均分区间分布表')
+knitr::include_graphics("图/平时成绩综合实践类课程平均值的分布情况.png")
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='平时成绩综合实践类课程难度的分布情况',fig.align='center'}
+table_output2(ps3_dt2,title = '实践类课程各学院平时成绩难度区间分布表')
+knitr::include_graphics("图/平时成绩综合实践类课程难度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='平时成绩综合实践类课程成绩集中度的分布情况',fig.align='center'}
+table_output2(ps3_dt3,'实践类课程各学院平时成绩课程成绩集中度区间分布表')
+knitr::include_graphics("图/平时成绩综合实践类课程课程成绩集中度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='平时成绩综合实践类课程及格率的分布情况',fig.align='center'}
+table_output2(ps3_dt4,'实践类课程各学院平时成绩及格率区间分布表')
+knitr::include_graphics("图/平时成绩综合实践类课程及格率的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='平时成绩综合实践类课程中间成绩集中度的分布情况',fig.align='center'}
+table_output2(ps3_dt5,'实践类课程各学院平时成绩中间成绩集中度区间分布表')
+knitr::include_graphics("图/平时成绩综合实践类课程中间成绩集中度的分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='平时成绩综合实践类课程高低分差异度的分布情况',fig.align='center'}
+table_output1(ps3_dt6,'实践类课程各学院平时成绩高低分差异度描述统计表')
+knitr::include_graphics("图/平时成绩综合实践类课程高低分差异度的分布情况.png")
+```
+
+\newpage
+
+
+### 通识必修类课程
+
+```{r,out.width="75%",fig.cap='平时成绩通识必修类课程平均值的分布情况',fig.align='center'}
+table_output2(ps5_dt1,title = '通识必修类课程各学院平时成绩平均分区间分布表')
+knitr::include_graphics("图/平时成绩通识必修类课程平均值的分布情况.png")#
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='平时成绩通识必修类课程难度的分布情况',fig.align='center'}
+table_output2(ps5_dt2,title = '通识必修类课程各学院平时成绩难度区间分布表')
+knitr::include_graphics("图/平时成绩通识必修类课程难度的分布情况.png")#
+```
+
+```{r,out.width="75%",fig.cap='平时成绩通识必修类课程成绩集中度的分布情况',fig.align='center'}
+table_output2(ps5_dt3,'通识必修类课程各学院平时成绩课程成绩集中度区间分布表')
+knitr::include_graphics("图/平时成绩通识必修类课程课程成绩集中度的分布情况.png")#
+```
+
+```{r,out.width="75%",fig.cap='平时成绩通识必修类课程及格率的分布情况',fig.align='center'}
+table_output2(ps5_dt4,'通识必修类课程各学院平时成绩及格率区间分布表')
+knitr::include_graphics("图/平时成绩通识必修类课程及格率的分布情况.png")#
+```
+
+```{r,out.width="75%",fig.cap='平时成绩通识必修类课程中间成绩集中度的分布情况',fig.align='center'}
+table_output2(ps5_dt5,'通识必修类课程各学院平时成绩中间成绩集中度区间分布表')
+knitr::include_graphics("图/平时成绩通识必修类课程中间成绩集中度的分布情况.png")#
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='平时成绩通识必修类课程高低分差异度的分布情况',fig.align='center'}
+table_output1(ps5_dt6,'通识必修类课程各学院平时成绩高低分差异度描述统计表')
+knitr::include_graphics("图/平时成绩通识必修类课程高低分差异度的分布情况.png")#
+```
+
+```{=tex}
+\newpage
+\newpage
+```
+
+## 成绩结构
+
+### 专业必修类课程
+
+```{r,out.width="75%",fig.cap='成绩结构专业必修类课程比例的均值分布情况',fig.align='center'}
+table_output2(str1_dt1,title = '专业必修类课程各学院成绩结构比例均值区间分布表')
+knitr::include_graphics("图/成绩结构专业必修类课程比例的均值分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='成绩结构专业必修类课程比例标准差分布情况'}
+table_output2(str1_dt2,title = '专业必修类课程各学院成绩结构标准差区间分布表')
+knitr::include_graphics("图/成绩结构专业必修类课程比例的标准差分布情况.png")#
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='成绩结构专业必修类课程比例差异度分布情况'}
+table_output2(str1_dt3,title = '专业必修类课程各学院成绩结构差异度区间分布表')
+knitr::include_graphics("图/成绩结构专业必修类课程比例的差异度分布情况.png")#
+```
+
+```{r,out.width="75%",fig.cap='成绩结构专业必修类课程比例合理度分布情况'}
+table_output2(str1_dt4,title = '专业必修类课程各学院成绩结构合理度区间分布表')
+knitr::include_graphics("图/成绩结构专业必修类课程比例的合理度分布情况.png")#
+```
+
+\newpage
+
+
+### 专业选修类课程
+
+```{r,out.width="75%",fig.cap='成绩结构专业选修类课程比例均值分布情况'}
+table_output2(str2_dt1,title = '专业选修类课程各学院成绩结构课程比例的均值区间分布表')
+knitr::include_graphics("图/成绩结构专业选修类课程比例的均值分布情况.png")#
+```
+
+```{r,out.width="75%",fig.cap='成绩结构专业必修类课程比例标准差分布情况'}
+table_output2(str2_dt2,title = '专业选修类课程各学院成绩结构标准差区间分布表')
+knitr::include_graphics("图/成绩结构专业选修类课程比例的标准差分布情况.png")#
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='成绩结构专业必修类课程比例的差异度分布情况'}
+table_output2(str2_dt3,title = '专业选修类课程各学院成绩结构的比例差异度区间分布表')
+knitr::include_graphics("图/成绩结构专业选修类课程比例的差异度分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='成绩结构专业必修类课程比例合理度分布情况'}
+table_output2(str2_dt4,title = '专业选修类课程各学院成绩结构的比例合理度区间分布表')
+knitr::include_graphics("图/成绩结构专业选修类课程比例的合理度分布情况.png")
+```
+
+\newpage
+
+
+### 实践类课程
+
+```{r,out.width="75%",fig.cap='成绩结构综合实践类课程比例的均值分布情况'}
+table_output2(str3_dt1,title = '实践类课程各学院成绩结构的比例均值区间分布表')
+knitr::include_graphics("图/成绩结构综合实践类课程比例的均值分布情况.png")
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='成绩结构综合实践类课程比例标准差分布情况'}
+table_output2(str3_dt2,title = '实践类课程各学院成绩结构标准差区间分布表')
+knitr::include_graphics("图/成绩结构综合实践类课程比例的标准差分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='成绩结构综合实践类课程比例的差异度分布情况'}
+table_output2(str3_dt3,title = '实践类课程各学院成绩结构比例的差异度区间分布表')
+knitr::include_graphics("图/成绩结构综合实践类课程比例的差异度分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='成绩结构综合实践类课程比例的合理度分布情况'}
+table_output2(str3_dt4,title = '实践类课程各学院成绩结构合理度区间分布表')
+knitr::include_graphics("图/成绩结构综合实践类课程比例的合理度分布情况.png")
+```
+
+\newpage
+
+
+### 通识必修类课程
+
+```{r,out.width="75%",fig.cap='成绩结构通识必修类课程比例的均值分布情况'}
+table_output2(str5_dt1,title = '通识必修类课程各学院成绩结构的比例均值区间分布表')
+knitr::include_graphics("图/成绩结构通识必修类课程比例的均值分布情况.png")
+```
+
+\clearpage
+
+```{r,out.width="75%",fig.cap='成绩结构通识必修类课程比例的标准差分布情况'}
+table_output2(str5_dt2,title = '通识必修类课程各学院成绩结构标准差区间分布表')
+knitr::include_graphics("图/成绩结构通识必修类课程比例的标准差分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='成绩结构通识必修类课程比例的差异度分布情况'}
+table_output2(str5_dt3,title = '通识必修类课程各学院成绩结构比例的差异度区间分布表')
+knitr::include_graphics("图/成绩结构通识必修类课程比例的差异度分布情况.png")
+```
+
+```{r,out.width="75%",fig.cap='成绩结构通识必修类课程比例的合理度分布情况'}
+table_output2(str5_dt4,title = '通识必修类课程各学院成绩结构合理度区间分布表')
+knitr::include_graphics("图/成绩结构通识必修类课程比例的合理度分布情况.png")
+```
+
+\newpage
+
+# **六、重点学院情况**
+
+## 物理
+
+## 工
+
+## 文
+
+## 经管
+
+## 艺术
+
+\newpage
+
+# **七、特殊课程分析**
+
+\newpage
+
+# **八、异常情况名单**
+
+
